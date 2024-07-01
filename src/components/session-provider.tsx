@@ -34,8 +34,14 @@ interface JoinSessionResponseData {
   message: string;
 }
 
+interface Position {
+  lat: number;
+  lng: number;
+}
+
 interface SessionContextType {
   sessionData: SessionData | null;
+  currentPosition: Position | null;
   sessionKey: string;
   loading: boolean;
   updateInterval: number;
@@ -54,6 +60,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [updateInterval, setUpdateInterval] = useState(60000);
   const router = useRouter();
@@ -112,6 +119,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({
         lng: longitude,
         timestamp: serverTimestamp(),
       });
+      setCurrentPosition({ lat: latitude, lng: longitude });
       console.log("sent location update");
     };
 
@@ -251,6 +259,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <SessionContext.Provider
       value={{
+        currentPosition,
         sessionData,
         sessionKey,
         loading,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,7 +16,13 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { SlidersVertical, Wifi, Eye, Link } from "lucide-react";
+import {
+  SlidersVertical,
+  Wifi,
+  Eye,
+  Link,
+  CircleUserRound,
+} from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -27,10 +33,14 @@ import {
 import { useMediaQuery } from "@/lib/use-media-query";
 import Spinner from "@/components/ui/spinner";
 import MapComponent from "@/components/map";
+import CustomMarker from "@/components/custom-marker"; // Import the custom marker component
 import { useSession } from "@/components/session-provider";
 import { AuthContext } from "@/components/firebase-provider";
 import GoogleButton from "@/components/ui/google-button";
 import { useToast } from "@/components/ui/use-toast";
+import { onSnapshot, collection } from "firebase/firestore";
+import { firestore } from "@/lib/firebase";
+import { OverlayViewF } from "@react-google-maps/api";
 
 const intervalOptions = {
   "30000": "Every 30 seconds",
@@ -41,11 +51,20 @@ const intervalOptions = {
 
 export default function SessionPage() {
   const [open, setOpen] = useState(false);
-  const { loading, updateInterval, setUpdateInterval, sessionKey } =
-    useSession();
+  const {
+    loading,
+    updateInterval,
+    setUpdateInterval,
+    sessionKey,
+    currentPosition,
+  } = useSession();
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const authContext = useContext(AuthContext);
   const { toast } = useToast();
+
+  const [locations, setLocations] = useState<{
+    [key: string]: { lat: number; lng: number; timestamp: number };
+  }>({});
 
   useEffect(() => {
     const storedInterval = localStorage.getItem("updateInterval");
@@ -53,6 +72,30 @@ export default function SessionPage() {
       setUpdateInterval(Number(storedInterval));
     }
   }, [setUpdateInterval]);
+
+  useEffect(() => {
+    if (!sessionKey) return;
+
+    const unsubscribe = onSnapshot(
+      collection(firestore, "sessions", sessionKey, "locations"),
+      (snapshot) => {
+        setLocations((prevLocations) => {
+          const newLocations = { ...prevLocations };
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+              const { lat, lng, timestamp } = change.doc.data();
+              newLocations[change.doc.id] = { lat, lng, timestamp };
+            } else if (change.type === "removed") {
+              delete newLocations[change.doc.id];
+            }
+          });
+          return newLocations;
+        });
+      }
+    );
+
+    return () => unsubscribe();
+  }, [sessionKey]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -157,7 +200,29 @@ export default function SessionPage() {
         <MapComponent
           containerStyle={{ width: "100%", height: "100%" }}
           zoom={12}
-        />
+          center={
+            Object.values(locations).length > 0
+              ? Object.values(locations)[0]
+              : undefined
+          }
+        >
+          {Object.values(locations).map(({ lat, lng, timestamp }, index) => (
+            <CustomMarker
+              key={`${index}-${timestamp}`}
+              lat={lat}
+              lng={lng}
+              timestamp={timestamp}
+            />
+          ))}
+          {currentPosition && (
+            <OverlayViewF
+              position={{ lat: currentPosition.lat, lng: currentPosition.lng }}
+              mapPaneName="overlayLayer"
+            >
+              <CircleUserRound className="w-5 h-5 text-blue-500" />
+            </OverlayViewF>
+          )}
+        </MapComponent>
       </div>
     </div>
   );
