@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter as FontSans } from "next/font/google";
 import "./globals.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import ReactQueryProvider from "@/components/query-provider";
@@ -30,10 +31,6 @@ export default function RootLayout({
         <link rel="icon" href="/favicon-16x16.png" sizes="16x16" />
         <link rel="icon" href="/favicon-32x32.png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link
-          href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
-          rel="stylesheet"
-        />
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body

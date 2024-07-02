@@ -40,7 +40,6 @@ import GoogleButton from "@/components/ui/google-button";
 import { useToast } from "@/components/ui/use-toast";
 import { onSnapshot, collection } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
-import { OverlayViewF } from "@react-google-maps/api";
 
 const intervalOptions = {
   "30000": "Every 30 seconds",
