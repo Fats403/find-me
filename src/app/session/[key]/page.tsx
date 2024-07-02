@@ -196,15 +196,10 @@ export default function SessionPage() {
         </Drawer>
       )}
 
-      <div className="h-full w-full">
+      <div className="h-full w-full overflow-hidden">
         <MapComponent
-          containerStyle={{ width: "100%", height: "100%" }}
+          center={{ lat: 51.0447, lng: -114.0719 }} // Set your initial center position
           zoom={12}
-          center={
-            Object.values(locations).length > 0
-              ? Object.values(locations)[0]
-              : undefined
-          }
         >
           {Object.values(locations).map(({ lat, lng, timestamp }, index) => (
             <CustomMarker
@@ -214,14 +209,6 @@ export default function SessionPage() {
               timestamp={timestamp}
             />
           ))}
-          {currentPosition && (
-            <OverlayViewF
-              position={{ lat: currentPosition.lat, lng: currentPosition.lng }}
-              mapPaneName="overlayLayer"
-            >
-              <CircleUserRound className="w-5 h-5 text-blue-500" />
-            </OverlayViewF>
-          )}
         </MapComponent>
       </div>
     </div>

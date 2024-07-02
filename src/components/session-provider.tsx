@@ -145,6 +145,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({
           );
         };
 
+        console.log("setup interval");
         intervalId = setInterval(fetchLocation, updateInterval);
       }
     }

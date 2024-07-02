@@ -1,12 +1,11 @@
-import React, { ReactNode } from "react";
-import { GoogleMap, useJsApiLoader } from "@react-google-maps/api";
-import Spinner from "./ui/spinner";
+import React, { useState, useCallback } from "react";
+import Map, { ViewStateChangeEvent } from "react-map-gl";
 
 interface MapComponentProps {
   containerStyle?: React.CSSProperties;
-  center?: google.maps.LatLngLiteral;
+  center?: { lat: number; lng: number };
   zoom?: number;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const defaultContainerStyle = {
@@ -14,34 +13,33 @@ const defaultContainerStyle = {
   height: "100%",
 };
 
-const defaultCenter = {
-  lat: 51.0447,
-  lng: -114.0719,
-};
-
 const MapComponent: React.FC<MapComponentProps> = ({
   containerStyle = defaultContainerStyle,
-  center = defaultCenter,
-  zoom = 10,
+  center,
+  zoom,
   children,
 }) => {
-  const { isLoaded } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+  const [viewport, setViewport] = useState({
+    latitude: center ? center.lat : 0,
+    longitude: center ? center.lng : 0,
+    zoom: zoom || 10,
   });
 
-  return isLoaded ? (
-    <GoogleMap
-      mapContainerStyle={containerStyle}
-      center={center}
-      zoom={zoom}
-      options={{ fullscreenControl: false }}
-    >
-      {children}
-    </GoogleMap>
-  ) : (
-    <div className="min-h-screen flex justify-center items-center">
-      <Spinner className="text-black dark:text-white" />
+  const handleMove = useCallback((event: ViewStateChangeEvent) => {
+    setViewport(event.viewState);
+  }, []);
+
+  return (
+    <div style={containerStyle}>
+      <Map
+        {...viewport}
+        mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
+        onMove={handleMove}
+        mapStyle="mapbox://styles/mapbox/streets-v11"
+        style={{ width: containerStyle.width, height: containerStyle.height }}
+      >
+        {children}
+      </Map>
     </div>
   );
 };

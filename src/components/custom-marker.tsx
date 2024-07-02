@@ -1,6 +1,6 @@
-import { OverlayViewF } from "@react-google-maps/api";
-import { MapPin } from "lucide-react";
 import React from "react";
+import { Marker } from "react-map-gl";
+import { MapPin } from "lucide-react";
 
 interface CustomMarkerProps {
   lat: number;
@@ -18,16 +18,16 @@ const CustomMarker: React.FC<CustomMarkerProps> = ({ lat, lng, timestamp }) => {
   };
 
   return (
-    <OverlayViewF position={{ lat, lng }} mapPaneName="overlayMouseTarget">
+    <Marker latitude={lat} longitude={lng}>
       <div
         onClick={handleClick}
         style={{
-          cursor: "pointer !important",
+          cursor: "pointer",
         }}
       >
         <MapPin className="w-5 h-5 text-red-500" />
       </div>
-    </OverlayViewF>
+    </Marker>
   );
 };
 
