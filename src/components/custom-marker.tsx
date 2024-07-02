@@ -5,16 +5,12 @@ import { MapPin } from "lucide-react";
 interface CustomMarkerProps {
   lat: number;
   lng: number;
-  timestamp: number;
+  timestamp?: string;
 }
 
 const CustomMarker: React.FC<CustomMarkerProps> = ({ lat, lng, timestamp }) => {
   const handleClick = () => {
-    alert(
-      `Lat: ${lat}, Lng: ${lng}, Timestamp: ${new Date(
-        timestamp
-      ).toLocaleString()}`
-    );
+    alert(`Lat: ${lat}, Lng: ${lng}`);
   };
 
   return (

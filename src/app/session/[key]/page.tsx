@@ -22,6 +22,9 @@ import {
   Eye,
   Link,
   CircleUserRound,
+  Settings,
+  EyeIcon,
+  EyeOff,
 } from "lucide-react";
 import {
   Select,
@@ -38,8 +41,16 @@ import { useSession } from "@/components/session-provider";
 import { AuthContext } from "@/components/firebase-provider";
 import GoogleButton from "@/components/ui/google-button";
 import { useToast } from "@/components/ui/use-toast";
-import { onSnapshot, collection } from "firebase/firestore";
-import { firestore } from "@/lib/firebase";
+
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Toggle } from "@/components/ui/toggle";
 
 const intervalOptions = {
   "30000": "Every 30 seconds",
@@ -54,16 +65,13 @@ export default function SessionPage() {
     loading,
     updateInterval,
     setUpdateInterval,
-    sessionKey,
-    currentPosition,
+    locations,
+    tracking,
+    toggleTracking,
   } = useSession();
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const authContext = useContext(AuthContext);
   const { toast } = useToast();
-
-  const [locations, setLocations] = useState<{
-    [key: string]: { lat: number; lng: number; timestamp: number };
-  }>({});
 
   useEffect(() => {
     const storedInterval = localStorage.getItem("updateInterval");
@@ -71,30 +79,6 @@ export default function SessionPage() {
       setUpdateInterval(Number(storedInterval));
     }
   }, [setUpdateInterval]);
-
-  useEffect(() => {
-    if (!sessionKey) return;
-
-    const unsubscribe = onSnapshot(
-      collection(firestore, "sessions", sessionKey, "locations"),
-      (snapshot) => {
-        setLocations((prevLocations) => {
-          const newLocations = { ...prevLocations };
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === "added") {
-              const { lat, lng, timestamp } = change.doc.data();
-              newLocations[change.doc.id] = { lat, lng, timestamp };
-            } else if (change.type === "removed") {
-              delete newLocations[change.doc.id];
-            }
-          });
-          return newLocations;
-        });
-      }
-    );
-
-    return () => unsubscribe();
-  }, [sessionKey]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -138,16 +122,7 @@ export default function SessionPage() {
     <div className="relative h-screen w-full">
       <Button
         variant="outline"
-        className="absolute z-50 right-2 top-2"
-        onClick={() => setOpen(true)}
-      >
-        <SlidersVertical className="w-5 h-5 mr-2" />
-        Open Settings
-      </Button>
-
-      <Button
-        variant="outline"
-        className="absolute z-50 right-2 bottom-48 rounded-full bg-white size-12 border-black border-1"
+        className="absolute z-50 left-2 bottom-8 rounded-full bg-white size-14 border-black border-2"
         onClick={() => {
           if (typeof navigator !== "undefined" && navigator.clipboard) {
             navigator.clipboard
@@ -160,7 +135,29 @@ export default function SessionPage() {
           }
         }}
       >
-        <Link className="w-6 h-6" />
+        <Link className="w-8 h-8" />
+      </Button>
+
+      <Button
+        onMouseDown={() => setOpen(true)}
+        variant="ghost"
+        size="icon"
+        className="absolute z-50 right-2 top-2 rounded-full bg-white size-12 border-black border-2"
+      >
+        <Settings className="h-6 w-6" />
+        <span className="sr-only">Toggle menu</span>
+      </Button>
+
+      <Button
+        onClick={toggleTracking}
+        className="absolute z-50 left-2 top-2 bg-white text-black border-black border-2"
+      >
+        {!tracking ? (
+          <Eye className="h-6 w-6 mr-2" />
+        ) : (
+          <EyeOff className="h-6 w-6 mr-2" />
+        )}
+        {!tracking ? "Enable Tracking" : "Disable Tracking"}
       </Button>
 
       {isDesktop ? (

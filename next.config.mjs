@@ -3,7 +3,6 @@ import withPWA from "next-pwa";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Other Next.js config options go here...
 };
 
 export default withPWA({
@@ -19,7 +18,7 @@ export default withPWA({
         cacheName: "mapbox-styles",
         expiration: {
           maxEntries: 50,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 1 week
         },
       },
     },
@@ -30,7 +29,7 @@ export default withPWA({
         cacheName: "mapbox-fonts",
         expiration: {
           maxEntries: 50,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 1 week
         },
       },
     },
@@ -41,7 +40,7 @@ export default withPWA({
         cacheName: "mapbox-gl-js",
         expiration: {
           maxEntries: 50,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 1 week
         },
       },
     },
@@ -52,7 +51,7 @@ export default withPWA({
         cacheName: "mapbox-tiles",
         expiration: {
           maxEntries: 1000,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 1 week
         },
       },
     },

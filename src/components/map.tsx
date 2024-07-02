@@ -13,16 +13,21 @@ const defaultContainerStyle = {
   height: "100%",
 };
 
+const defaultCenter = {
+  lat: 51.0447,
+  lng: -114.0719,
+};
+
 const MapComponent: React.FC<MapComponentProps> = ({
   containerStyle = defaultContainerStyle,
-  center,
-  zoom,
+  center = defaultCenter,
+  zoom = 10,
   children,
 }) => {
   const [viewport, setViewport] = useState({
-    latitude: center ? center.lat : 0,
-    longitude: center ? center.lng : 0,
-    zoom: zoom || 10,
+    latitude: center.lat,
+    longitude: center.lng,
+    zoom: zoom,
   });
 
   const handleMove = useCallback((event: ViewStateChangeEvent) => {
