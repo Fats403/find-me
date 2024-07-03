@@ -1,6 +1,6 @@
 import React from "react";
 import { Marker } from "react-map-gl";
-import { CircleUserRound, MapPin } from "lucide-react";
+import { MapPin, User } from "lucide-react";
 import { Position } from "@/lib/types";
 
 interface CustomMarkerPosition extends Position {
@@ -19,16 +19,13 @@ const CustomMarker: React.FC<CustomMarkerPosition> = ({
 
   return (
     <Marker latitude={lat} longitude={lng}>
-      <div
-        onClick={handleClick}
-        className={`absolute cursor-pointer pointer-events-auto ${
-          isMostRecent ? "z-[1000]" : "z-[500]"
-        } ${isMostRecent ? "most-recent-marker" : "other-marker"}`}
-      >
+      <div onClick={handleClick} className={`absolute cursor-pointer`}>
         {isMostRecent ? (
-          <CircleUserRound className="w-5 h-5 text-black bg-white rounded-full" />
+          <div className="flex justify-center items-center size-8 rounded-full bg-white border-2 border-black">
+            <User className="w-5 h-5 text-red-500" />
+          </div>
         ) : (
-          <MapPin className="w-5 h-5 text-red-500" />
+          <MapPin className="w-6 h-6 text-red-500" />
         )}
       </div>
     </Marker>

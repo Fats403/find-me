@@ -25,6 +25,7 @@ import {
   Settings,
   EyeIcon,
   EyeOff,
+  Pin,
 } from "lucide-react";
 import {
   Select,
@@ -41,6 +42,8 @@ import { useSession } from "@/components/session-provider";
 import { AuthContext } from "@/components/firebase-provider";
 import GoogleButton from "@/components/ui/google-button";
 import { useToast } from "@/components/ui/use-toast";
+import { Marker } from "react-map-gl";
+import { Location } from "@/lib/types";
 
 const intervalOptions = {
   "30000": "Every 30 seconds",
@@ -61,7 +64,10 @@ export default function SessionPage() {
   } = useSession();
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const authContext = useContext(AuthContext);
+
   const { toast } = useToast();
+  const [placingPin, setPlacingPin] = useState(false);
+  const [customPin, setCustomPin] = useState<Location | null>(null);
 
   useEffect(() => {
     const storedInterval = localStorage.getItem("updateInterval");
@@ -112,7 +118,7 @@ export default function SessionPage() {
     <div className="relative h-screen w-full">
       <Button
         variant="outline"
-        className="absolute z-50 right-2 top-20 rounded-full bg-white size-12 border-black border-2"
+        className="absolute z-50 right-4 top-20 rounded-full bg-white size-12 border-black border-2"
         onClick={() => {
           if (typeof navigator !== "undefined" && navigator.clipboard) {
             navigator.clipboard
@@ -132,7 +138,7 @@ export default function SessionPage() {
         onMouseDown={() => setOpen(true)}
         variant="ghost"
         size="icon"
-        className="absolute z-50 right-2 top-2 rounded-full bg-white size-12 border-black border-2"
+        className="absolute z-50 right-4 top-4 rounded-full bg-white size-12 border-black border-2"
       >
         <Settings className="h-6 w-6" />
         <span className="sr-only">Toggle menu</span>
@@ -140,7 +146,7 @@ export default function SessionPage() {
 
       <Button
         onClick={toggleTracking}
-        className="absolute z-50 left-2 top-2 bg-white text-black border-black border-2"
+        className="absolute z-50 left-4 top-4 bg-white text-black border-black border-2 hover:bg-gray-200"
       >
         {!tracking ? (
           <Eye className="h-6 w-6 mr-2" />
@@ -162,6 +168,8 @@ export default function SessionPage() {
             <SettingsContent
               onSelectChange={handleSelectChange}
               currentInterval={updateInterval}
+              placingPin={placingPin}
+              setPlacingPin={setPlacingPin}
             />
           </DialogContent>
         </Dialog>
@@ -177,6 +185,8 @@ export default function SessionPage() {
             <SettingsContent
               onSelectChange={handleSelectChange}
               currentInterval={updateInterval}
+              placingPin={placingPin}
+              setPlacingPin={setPlacingPin}
             />
           </DrawerContent>
         </Drawer>
@@ -184,20 +194,28 @@ export default function SessionPage() {
 
       <div className="h-full w-full overflow-hidden">
         <MapComponent
-          center={{ lat: 51.0447, lng: -114.0719 }} // Set your initial center position
+          center={{ lat: 51.0447, lng: -114.0719 }}
+          placingPin={placingPin}
+          setCustomPin={setCustomPin}
+          setPlacingPin={setPlacingPin}
           zoom={12}
         >
-          {Object.entries(locations).map(
-            ([id, { lat, lng, timestamp }], index) => (
-              <CustomMarker
-                id={id}
-                key={`${index}-${id}`}
-                lat={lat}
-                lng={lng}
-                timestamp={timestamp}
-                isMostRecent={index === locations.length - 1}
-              />
-            )
+          {locations.map(({ lat, lng, timestamp, id }, index) => (
+            <CustomMarker
+              id={id}
+              key={`${index}-${id}`}
+              lat={lat}
+              lng={lng}
+              timestamp={timestamp}
+              isMostRecent={index === locations.length - 1}
+            />
+          ))}
+          {customPin && (
+            <Marker latitude={customPin.lat} longitude={customPin.lng}>
+              <div className="flex justify-center items-center size-8 rounded-full bg-white border-2 border-black">
+                <Pin className="w-5 h-5 text-red-500" />
+              </div>
+            </Marker>
           )}
         </MapComponent>
       </div>
@@ -208,11 +226,15 @@ export default function SessionPage() {
 interface SettingsContentProps {
   onSelectChange: (value: string) => void;
   currentInterval: number;
+  placingPin: boolean;
+  setPlacingPin: (placing: boolean) => void;
 }
 
 function SettingsContent({
   onSelectChange,
   currentInterval,
+  placingPin,
+  setPlacingPin,
 }: SettingsContentProps) {
   const { deleteSession, isDeletingSession } = useSession();
   const defaultValue = currentInterval.toString();
@@ -256,14 +278,20 @@ function SettingsContent({
           {onlineStatus ? "Online" : "Offline"}
         </span>
       </div>
-      <div className="flex items-center gap-2">
-        <Eye className="w-5 h-5 text-muted-foreground" />
-        <span className="text-sm font-medium">12 viewers</span>
-      </div>
+
+      <Button
+        onClick={() => setPlacingPin(!placingPin)}
+        variant="outline"
+        className="mt-2"
+      >
+        {placingPin ? "Cancel Pin Placement" : "Place a Pin on the Map"}
+      </Button>
+
       <Button
         variant="destructive"
         onClick={deleteSession}
         disabled={isDeletingSession}
+        className="mt-2"
       >
         {isDeletingSession ? <Spinner /> : "Delete Session"}
       </Button>
