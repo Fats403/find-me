@@ -1,14 +1,18 @@
 import React from "react";
 import { Marker } from "react-map-gl";
-import { MapPin } from "lucide-react";
+import { CircleUserRound, MapPin } from "lucide-react";
+import { Position } from "@/lib/types";
 
-interface CustomMarkerProps {
-  lat: number;
-  lng: number;
-  timestamp?: string;
+interface CustomMarkerPosition extends Position {
+  isMostRecent?: boolean;
 }
 
-const CustomMarker: React.FC<CustomMarkerProps> = ({ lat, lng, timestamp }) => {
+const CustomMarker: React.FC<CustomMarkerPosition> = ({
+  lat,
+  lng,
+  timestamp,
+  isMostRecent,
+}) => {
   const handleClick = () => {
     alert(`Lat: ${lat}, Lng: ${lng}`);
   };
@@ -17,11 +21,15 @@ const CustomMarker: React.FC<CustomMarkerProps> = ({ lat, lng, timestamp }) => {
     <Marker latitude={lat} longitude={lng}>
       <div
         onClick={handleClick}
-        style={{
-          cursor: "pointer",
-        }}
+        className={`absolute cursor-pointer pointer-events-auto ${
+          isMostRecent ? "z-[1000]" : "z-[500]"
+        } ${isMostRecent ? "most-recent-marker" : "other-marker"}`}
       >
-        <MapPin className="w-5 h-5 text-red-500" />
+        {isMostRecent ? (
+          <CircleUserRound className="w-5 h-5 text-black bg-white rounded-full" />
+        ) : (
+          <MapPin className="w-5 h-5 text-red-500" />
+        )}
       </div>
     </Marker>
   );

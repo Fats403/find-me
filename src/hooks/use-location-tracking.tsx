@@ -3,19 +3,16 @@
 import { useState, useEffect, useContext } from "react";
 import {
   collection,
-  addDoc,
+  setDoc,
+  doc,
   serverTimestamp,
   onSnapshot,
+  Timestamp,
 } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthContext } from "@/components/firebase-provider";
-
-interface Position {
-  lat: number;
-  lng: number;
-  timestamp?: string;
-}
+import { Position } from "@/lib/types";
 
 const useLocationTracking = (
   sessionKey: string | undefined,
@@ -23,7 +20,7 @@ const useLocationTracking = (
   updateInterval: number
 ) => {
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
-  const [locations, setLocations] = useState<{ [id: string]: Position }>({});
+  const [locations, setLocations] = useState<Position[]>([]);
   const [tracking, setTracking] = useState<boolean>(false);
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
@@ -44,22 +41,41 @@ const useLocationTracking = (
         firestore,
         `sessions/${sessionKey}/locations`
       );
-      await addDoc(locationCollectionRef, {
+      const docRef = doc(locationCollectionRef);
+      await setDoc(docRef, {
+        id: docRef.id,
         lat: latitude,
         lng: longitude,
         timestamp: serverTimestamp(),
       });
-      setCurrentPosition({ lat: latitude, lng: longitude });
+      setCurrentPosition({
+        id: docRef.id,
+        lat: latitude,
+        lng: longitude,
+        timestamp: Timestamp.now(),
+      });
       console.log("sent location update");
     };
 
     const handlePositionError = (error: GeolocationPositionError) => {
       console.error("Error getting location:", error);
+      let description = error.message;
+      if (error.code === error.PERMISSION_DENIED) {
+        description = "Permission denied. Please enable location access.";
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        description = "Position unavailable. Please try again.";
+      } else if (error.code === error.TIMEOUT) {
+        description = "Location request timed out. Please try again.";
+      }
       toast({
         title: "Location error",
-        description: error.message,
+        description,
         variant: "destructive",
       });
+      setTracking(false);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("tracking", JSON.stringify(false));
+      }
     };
 
     const geoOptions = { enableHighAccuracy: true };
@@ -78,7 +94,6 @@ const useLocationTracking = (
         );
       };
 
-      console.log("setup interval");
       intervalId = setInterval(fetchLocation, updateInterval);
     }
 
@@ -102,27 +117,74 @@ const useLocationTracking = (
     const unsubscribe = onSnapshot(
       collection(firestore, "sessions", sessionKey, "locations"),
       (snapshot) => {
-        setLocations((prevLocations) => {
-          const newLocations = { ...prevLocations };
-          snapshot.docChanges().forEach((change) => {
-            const { lat, lng, timestamp } = change.doc.data();
-            if (change.type === "added" || change.type === "modified") {
-              newLocations[change.doc.id] = { lat, lng, timestamp };
-            } else if (change.type === "removed") {
-              delete newLocations[change.doc.id];
-            }
-          });
-          return newLocations;
+        const newLocations: Position[] = [];
+
+        snapshot.forEach((doc) => {
+          const data = doc.data() as Position;
+          const { id, lat, lng, timestamp } = data;
+
+          if (timestamp instanceof Timestamp) {
+            newLocations.push({ id, lat, lng, timestamp });
+          }
         });
+
+        newLocations.sort(
+          (a, b) =>
+            a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime()
+        );
+
+        setLocations(newLocations);
       }
     );
 
     return () => unsubscribe();
   }, [sessionKey]);
 
+  const requestLocationPermission = () => {
+    navigator.geolocation.getCurrentPosition(
+      () => {},
+      (error) => {
+        let description = error.message;
+        if (error.code === error.PERMISSION_DENIED) {
+          description = "Permission denied. Please enable location access.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          description = "Position unavailable. Please try again.";
+        } else if (error.code === error.TIMEOUT) {
+          description = "Location request timed out. Please try again.";
+        }
+        toast({
+          title: "Location error",
+          description,
+          variant: "destructive",
+        });
+      }
+    );
+  };
+
   const toggleTracking = () => {
     setTracking((prev) => {
       const newState = !prev;
+      if (newState) {
+        navigator.permissions
+          .query({ name: "geolocation" })
+          .then((result) => {
+            if (result.state !== "granted") {
+              toast({
+                title: "Permission required",
+                description: "Please enable location access to start tracking.",
+                variant: "destructive",
+              });
+              requestLocationPermission();
+            }
+          })
+          .catch((error) => {
+            console.error("Permission query failed:", error);
+            setTracking(false);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("tracking", JSON.stringify(false));
+            }
+          });
+      }
       if (typeof window !== "undefined") {
         localStorage.setItem("tracking", JSON.stringify(newState));
       }
@@ -130,7 +192,12 @@ const useLocationTracking = (
     });
   };
 
-  return { currentPosition, locations, tracking, toggleTracking };
+  return {
+    currentPosition,
+    locations,
+    tracking,
+    toggleTracking,
+  };
 };
 
 export default useLocationTracking;

@@ -42,16 +42,6 @@ import { AuthContext } from "@/components/firebase-provider";
 import GoogleButton from "@/components/ui/google-button";
 import { useToast } from "@/components/ui/use-toast";
 
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Toggle } from "@/components/ui/toggle";
-
 const intervalOptions = {
   "30000": "Every 30 seconds",
   "60000": "Every 1 minute",
@@ -122,7 +112,7 @@ export default function SessionPage() {
     <div className="relative h-screen w-full">
       <Button
         variant="outline"
-        className="absolute z-50 left-2 bottom-8 rounded-full bg-white size-14 border-black border-2"
+        className="absolute z-50 right-2 top-20 rounded-full bg-white size-12 border-black border-2"
         onClick={() => {
           if (typeof navigator !== "undefined" && navigator.clipboard) {
             navigator.clipboard
@@ -135,7 +125,7 @@ export default function SessionPage() {
           }
         }}
       >
-        <Link className="w-8 h-8" />
+        <Link className="w-10 h-10" />
       </Button>
 
       <Button
@@ -197,14 +187,18 @@ export default function SessionPage() {
           center={{ lat: 51.0447, lng: -114.0719 }} // Set your initial center position
           zoom={12}
         >
-          {Object.values(locations).map(({ lat, lng, timestamp }, index) => (
-            <CustomMarker
-              key={`${index}-${timestamp}`}
-              lat={lat}
-              lng={lng}
-              timestamp={timestamp}
-            />
-          ))}
+          {Object.entries(locations).map(
+            ([id, { lat, lng, timestamp }], index) => (
+              <CustomMarker
+                id={id}
+                key={`${index}-${id}`}
+                lat={lat}
+                lng={lng}
+                timestamp={timestamp}
+                isMostRecent={index === locations.length - 1}
+              />
+            )
+          )}
         </MapComponent>
       </div>
     </div>

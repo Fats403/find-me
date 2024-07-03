@@ -9,12 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import useFetchSessionData from "@/hooks/use-fetch-session";
 import useLocationTracking from "@/hooks/use-location-tracking";
-
-interface Position {
-  lat: number;
-  lng: number;
-  timestamp?: string;
-}
+import { Position } from "@/lib/types";
 
 interface SessionData {
   creatorId: string;
@@ -34,7 +29,7 @@ interface DeleteSessionResponseData {
 interface SessionContextType {
   sessionData: SessionData | null;
   currentPosition: Position | null;
-  locations: { [id: string]: Position };
+  locations: Position[];
   sessionKey: string;
   loading: boolean;
   updateInterval: number;
