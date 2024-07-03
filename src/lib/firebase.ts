@@ -7,7 +7,13 @@ import {
   setPersistence,
   browserLocalPersistence,
 } from "firebase/auth";
-import { initializeFirestore, persistentLocalCache } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  doc,
+  setDoc,
+} from "firebase/firestore";
+import { Location } from "./types";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -35,3 +41,11 @@ export const googleAuthProvider = new GoogleAuthProvider();
 export const firestore = initializeFirestore(app, {
   localCache: persistentLocalCache(),
 });
+
+export default function setPinLocation(
+  sessionKey: string | null,
+  pin: Location
+): Promise<void> {
+  const docRef = doc(firestore, `sessions/${sessionKey}`);
+  return setDoc(docRef, { pin }, { merge: true });
+}

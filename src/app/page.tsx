@@ -11,19 +11,47 @@ import { useRouter } from "next/navigation";
 import Spinner from "@/components/ui/spinner";
 import { AuthContext } from "@/components/firebase-provider";
 import GoogleButton from "@/components/ui/google-button";
-import { useSession } from "@/components/session-provider";
 import { auth } from "@/lib/firebase";
+import { useMutation } from "@tanstack/react-query";
+import { CreateSessionResponseData } from "@/lib/types";
+import axios from "axios";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Component() {
   const authContext = useContext(AuthContext);
   const [value, setValue] = useState("");
   const router = useRouter();
+  const { toast } = useToast();
 
-  const { isCreatingSession, createSession } = useSession();
-
-  useEffect(() => {
-    // auth.signOut();
-  }, []);
+  const createSessionMutation = useMutation<CreateSessionResponseData, Error>({
+    mutationFn: async () => {
+      const idToken = await auth.currentUser?.getIdToken(true);
+      const response = await axios.post<CreateSessionResponseData>(
+        "/api/start-session",
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.sessionKey) {
+        router.push(`/session/${data.sessionKey}`);
+      }
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error.response?.data?.error || "An unexpected error occurred.";
+      toast({
+        title: "Something went wrong",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     if (!authContext?.loading) {
@@ -62,10 +90,10 @@ export default function Component() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  disabled={isCreatingSession}
-                  onClick={() => createSession()}
+                  disabled={createSessionMutation.isPending}
+                  onClick={() => createSessionMutation.mutate()}
                 >
-                  {isCreatingSession ? (
+                  {createSessionMutation.isPending ? (
                     <Spinner className="text-black dark:text-white" />
                   ) : (
                     "Create Session"

@@ -1,6 +1,8 @@
-import { Location } from "@/lib/types";
-import React, { useState, useCallback } from "react";
+import setPinLocation from "@/lib/firebase";
+import React, { useState, useCallback, useEffect } from "react";
 import Map, { ViewStateChangeEvent, MapLayerMouseEvent } from "react-map-gl";
+import { LngLatBounds } from "mapbox-gl";
+import { useSettings } from "./settings-provider";
 
 interface MapComponentProps {
   containerStyle?: React.CSSProperties;
@@ -8,11 +10,11 @@ interface MapComponentProps {
   zoom?: number;
   children?: React.ReactNode;
   placingPin: boolean;
-  setCustomPin: (pin: Location) => void;
   setPlacingPin: (placing: boolean) => void;
+  sessionKey: string | null;
 }
 
-const defaultContainerStyle = {
+const defaultContainerStyle: React.CSSProperties = {
   width: "100%",
   height: "100%",
 };
@@ -25,12 +27,13 @@ const defaultCenter = {
 const MapComponent: React.FC<MapComponentProps> = ({
   containerStyle = defaultContainerStyle,
   center = defaultCenter,
-  zoom = 10,
+  zoom = 9,
   children,
   placingPin,
-  setCustomPin,
+  sessionKey,
   setPlacingPin,
 }) => {
+  const { autoFit } = useSettings();
   const [viewport, setViewport] = useState({
     latitude: center.lat,
     longitude: center.lng,
@@ -45,14 +48,41 @@ const MapComponent: React.FC<MapComponentProps> = ({
     (event: MapLayerMouseEvent) => {
       if (placingPin) {
         const { lngLat } = event;
-        const lat = lngLat.lat;
-        const lng = lngLat.lng;
-        setCustomPin({ lat, lng });
+
+        setPinLocation(sessionKey, { lat: lngLat.lat, lng: lngLat.lng });
         setPlacingPin(false);
       }
     },
-    [placingPin, setCustomPin, setPlacingPin]
+    [placingPin, sessionKey, setPlacingPin]
   );
+
+  useEffect(() => {
+    if (!autoFit) return;
+
+    const bounds = new LngLatBounds();
+    React.Children.forEach(children, (child) => {
+      if (React.isValidElement(child)) {
+        const { latitude, longitude, lat, lng } = child.props;
+        if (latitude && longitude) {
+          bounds.extend([longitude, latitude]);
+        } else if (lat && lng) {
+          bounds.extend([lng, lat]);
+        }
+      }
+    });
+
+    if (bounds.isEmpty()) {
+      return;
+    }
+
+    const { _ne, _sw } = bounds;
+
+    setViewport({
+      latitude: (_ne.lat + _sw.lat) / 2,
+      longitude: (_ne.lng + _sw.lng) / 2,
+      zoom: 10,
+    });
+  }, [children, autoFit]);
 
   return (
     <div style={containerStyle}>
@@ -61,7 +91,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
         onMove={handleMove}
         onClick={handleMapClick}
-        mapStyle="mapbox://styles/mapbox/streets-v11"
+        mapStyle="mapbox://styles/mapbox/outdoors-v12"
         style={{ width: containerStyle.width, height: containerStyle.height }}
       >
         {children}

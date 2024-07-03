@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import ReactQueryProvider from "@/components/query-provider";
 import AuthProvider from "@/components/firebase-provider";
-import { SessionProvider } from "@/components/session-provider";
+import { SettingsProvider } from "@/components/settings-provider";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -41,10 +41,10 @@ export default function RootLayout({
       >
         <AuthProvider>
           <ReactQueryProvider>
-            <SessionProvider>
+            <SettingsProvider>
               {children}
               <Toaster />
-            </SessionProvider>
+            </SettingsProvider>
           </ReactQueryProvider>
         </AuthProvider>
       </body>

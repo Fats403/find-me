@@ -12,27 +12,18 @@ import {
 import { firestore } from "@/lib/firebase";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthContext } from "@/components/firebase-provider";
-import { Position } from "@/lib/types";
+import { Position, SessionData } from "@/lib/types";
+import { useSettings } from "@/components/settings-provider";
 
 const useLocationTracking = (
   sessionKey: string | undefined,
-  sessionData: any,
-  updateInterval: number
+  sessionData: SessionData | null
 ) => {
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [locations, setLocations] = useState<Position[]>([]);
-  const [tracking, setTracking] = useState<boolean>(false);
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedTrackingState = localStorage.getItem("tracking");
-      if (savedTrackingState) {
-        setTracking(JSON.parse(savedTrackingState));
-      }
-    }
-  }, []);
+  const { updateInterval, tracking, setTracking } = useSettings();
 
   useEffect(() => {
     const sendLocationUpdate = async (position: GeolocationPosition) => {
@@ -109,6 +100,7 @@ const useLocationTracking = (
     updateInterval,
     toast,
     authContext?.user,
+    setTracking,
   ]);
 
   useEffect(() => {
@@ -140,63 +132,9 @@ const useLocationTracking = (
     return () => unsubscribe();
   }, [sessionKey]);
 
-  const requestLocationPermission = () => {
-    navigator.geolocation.getCurrentPosition(
-      () => {},
-      (error) => {
-        let description = error.message;
-        if (error.code === error.PERMISSION_DENIED) {
-          description = "Permission denied. Please enable location access.";
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          description = "Position unavailable. Please try again.";
-        } else if (error.code === error.TIMEOUT) {
-          description = "Location request timed out. Please try again.";
-        }
-        toast({
-          title: "Location error",
-          description,
-          variant: "destructive",
-        });
-      }
-    );
-  };
-
-  const toggleTracking = () => {
-    setTracking((prev) => {
-      const newState = !prev;
-      if (newState) {
-        navigator.permissions
-          .query({ name: "geolocation" })
-          .then((result) => {
-            if (result.state !== "granted") {
-              toast({
-                title: "Permission required",
-                description: "Please enable location access to start tracking.",
-                variant: "destructive",
-              });
-              requestLocationPermission();
-            }
-          })
-          .catch((error) => {
-            console.error("Permission query failed:", error);
-            setTracking(false);
-            if (typeof window !== "undefined") {
-              localStorage.setItem("tracking", JSON.stringify(false));
-            }
-          });
-      }
-      if (typeof window !== "undefined") {
-        localStorage.setItem("tracking", JSON.stringify(newState));
-      }
-      return newState;
-    });
-  };
-
   return {
     currentPosition,
     locations,
-    tracking,
-    toggleTracking,
   };
 };
 

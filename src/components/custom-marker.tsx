@@ -13,13 +13,13 @@ const CustomMarker: React.FC<CustomMarkerPosition> = ({
   timestamp,
   isMostRecent,
 }) => {
-  const handleClick = () => {
-    alert(`Lat: ${lat}, Lng: ${lng}`);
-  };
-
   return (
     <Marker latitude={lat} longitude={lng}>
-      <div onClick={handleClick} className={`absolute cursor-pointer`}>
+      <div className="relative group cursor-pointer">
+        <div className="hidden group-hover:block absolute bottom-full mb-2 p-2 bg-white border border-gray-300 rounded shadow-lg">
+          <p>Lat: {lat}</p>
+          <p>Lng: {lng}</p>
+        </div>
         {isMostRecent ? (
           <div className="flex justify-center items-center size-8 rounded-full bg-white border-2 border-black">
             <User className="w-5 h-5 text-red-500" />

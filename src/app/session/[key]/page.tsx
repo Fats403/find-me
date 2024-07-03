@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,17 +16,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import {
-  SlidersVertical,
-  Wifi,
-  Eye,
-  Link,
-  CircleUserRound,
-  Settings,
-  EyeIcon,
-  EyeOff,
-  Pin,
-} from "lucide-react";
+import { Wifi, Eye, Link, Settings, EyeOff, Pin } from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -37,13 +27,20 @@ import {
 import { useMediaQuery } from "@/lib/use-media-query";
 import Spinner from "@/components/ui/spinner";
 import MapComponent from "@/components/map";
-import CustomMarker from "@/components/custom-marker"; // Import the custom marker component
-import { useSession } from "@/components/session-provider";
+import CustomMarker from "@/components/custom-marker";
 import { AuthContext } from "@/components/firebase-provider";
 import GoogleButton from "@/components/ui/google-button";
 import { useToast } from "@/components/ui/use-toast";
 import { Marker } from "react-map-gl";
-import { Location } from "@/lib/types";
+import { DeleteSessionResponseData } from "@/lib/types";
+import { useMutation } from "@tanstack/react-query";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import useLocationTracking from "@/hooks/use-location-tracking";
+import { useParams } from "next/navigation";
+import useFetchSessionData from "@/hooks/use-fetch-session";
+import { useSettings } from "@/components/settings-provider";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const intervalOptions = {
   "30000": "Every 30 seconds",
@@ -54,40 +51,86 @@ const intervalOptions = {
 
 export default function SessionPage() {
   const [open, setOpen] = useState(false);
-  const {
-    loading,
-    updateInterval,
-    setUpdateInterval,
-    locations,
-    tracking,
-    toggleTracking,
-  } = useSession();
+  const [placingPin, setPlacingPin] = useState(false);
+
+  const { key } = useParams();
+  const { toast } = useToast();
+
+  const sessionKey = useMemo(
+    () => (typeof key === "string" || key === undefined ? key : key?.[0]),
+    [key]
+  );
+
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const authContext = useContext(AuthContext);
 
-  const { toast } = useToast();
-  const [placingPin, setPlacingPin] = useState(false);
-  const [customPin, setCustomPin] = useState<Location | null>(null);
+  const { tracking, setTracking } = useSettings();
+  const { sessionData, loading } = useFetchSessionData(sessionKey);
 
-  useEffect(() => {
-    const storedInterval = localStorage.getItem("updateInterval");
-    if (storedInterval) {
-      setUpdateInterval(Number(storedInterval));
-    }
-  }, [setUpdateInterval]);
+  const { currentPosition, locations } = useLocationTracking(
+    sessionKey,
+    sessionData
+  );
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
   };
 
-  const handleSelectChange = useCallback(
-    (value: string) => {
-      const interval = Number(value);
-      setUpdateInterval(interval);
-      localStorage.setItem("updateInterval", value);
-    },
-    [setUpdateInterval]
-  );
+  const handleCopyLink = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href).then(function () {
+        toast({
+          title: "Copied link to clipboard!",
+        });
+      });
+    }
+  };
+
+  const requestLocationPermission = () => {
+    navigator.geolocation.getCurrentPosition(
+      () => {},
+      (error) => {
+        let description = error.message;
+        if (error.code === error.PERMISSION_DENIED) {
+          description = "Permission denied. Please enable location access.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          description = "Position unavailable. Please try again.";
+        } else if (error.code === error.TIMEOUT) {
+          description = "Location request timed out. Please try again.";
+        }
+        toast({
+          title: "Location error",
+          description,
+          variant: "destructive",
+        });
+      }
+    );
+  };
+
+  const toggleTracking = () => {
+    setTracking((prev) => {
+      const newState = !prev;
+      if (newState) {
+        navigator.permissions
+          .query({ name: "geolocation" })
+          .then((result) => {
+            if (result.state !== "granted") {
+              toast({
+                title: "Permission required",
+                description: "Please enable location access to start tracking.",
+                variant: "destructive",
+              });
+              requestLocationPermission();
+            }
+          })
+          .catch((error) => {
+            console.error("Permission query failed:", error);
+            setTracking(false);
+          });
+      }
+      return newState;
+    });
+  };
 
   if (loading || authContext?.loading) {
     return (
@@ -119,23 +162,17 @@ export default function SessionPage() {
       <Button
         variant="outline"
         className="absolute z-50 right-4 top-20 rounded-full bg-white size-12 border-black border-2"
-        onClick={() => {
-          if (typeof navigator !== "undefined" && navigator.clipboard) {
-            navigator.clipboard
-              .writeText(window.location.href)
-              .then(function () {
-                toast({
-                  title: "Copied link to clipboard!",
-                });
-              });
-          }
+        onMouseDown={() => {
+          handleCopyLink();
         }}
       >
         <Link className="w-10 h-10" />
       </Button>
 
       <Button
-        onMouseDown={() => setOpen(true)}
+        onMouseDown={() => {
+          setOpen(true);
+        }}
         variant="ghost"
         size="icon"
         className="absolute z-50 right-4 top-4 rounded-full bg-white size-12 border-black border-2"
@@ -166,8 +203,6 @@ export default function SessionPage() {
               </DialogDescription>
             </DialogHeader>
             <SettingsContent
-              onSelectChange={handleSelectChange}
-              currentInterval={updateInterval}
               placingPin={placingPin}
               setPlacingPin={setPlacingPin}
             />
@@ -183,8 +218,6 @@ export default function SessionPage() {
               </DrawerDescription>
             </DrawerHeader>
             <SettingsContent
-              onSelectChange={handleSelectChange}
-              currentInterval={updateInterval}
               placingPin={placingPin}
               setPlacingPin={setPlacingPin}
             />
@@ -196,9 +229,8 @@ export default function SessionPage() {
         <MapComponent
           center={{ lat: 51.0447, lng: -114.0719 }}
           placingPin={placingPin}
-          setCustomPin={setCustomPin}
+          sessionKey={sessionKey}
           setPlacingPin={setPlacingPin}
-          zoom={12}
         >
           {locations.map(({ lat, lng, timestamp, id }, index) => (
             <CustomMarker
@@ -210,8 +242,11 @@ export default function SessionPage() {
               isMostRecent={index === locations.length - 1}
             />
           ))}
-          {customPin && (
-            <Marker latitude={customPin.lat} longitude={customPin.lng}>
+          {sessionData?.pin && (
+            <Marker
+              latitude={sessionData.pin.lat}
+              longitude={sessionData.pin.lng}
+            >
               <div className="flex justify-center items-center size-8 rounded-full bg-white border-2 border-black">
                 <Pin className="w-5 h-5 text-red-500" />
               </div>
@@ -224,20 +259,17 @@ export default function SessionPage() {
 }
 
 interface SettingsContentProps {
-  onSelectChange: (value: string) => void;
-  currentInterval: number;
   placingPin: boolean;
   setPlacingPin: (placing: boolean) => void;
 }
 
-function SettingsContent({
-  onSelectChange,
-  currentInterval,
-  placingPin,
-  setPlacingPin,
-}: SettingsContentProps) {
-  const { deleteSession, isDeletingSession } = useSession();
-  const defaultValue = currentInterval.toString();
+function SettingsContent({ placingPin, setPlacingPin }: SettingsContentProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const authContext = useContext(AuthContext);
+  const { updateInterval, setUpdateInterval, setAutoFit, autoFit } =
+    useSettings();
+  const defaultValue = updateInterval.toString();
   const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
 
   useEffect(() => {
@@ -252,10 +284,43 @@ function SettingsContent({
     };
   }, []);
 
+  const handleSelectChange = (value: string) => {
+    setUpdateInterval(Number(value));
+  };
+
+  const handleAutoFitChange = (value: boolean) => {
+    setAutoFit(value);
+  };
+
+  const deleteSessionMutation = useMutation<DeleteSessionResponseData, Error>({
+    mutationFn: async () => {
+      const idToken = await authContext?.user?.getIdToken(true);
+      return axios.delete("/api/delete-session", {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+    },
+    onSuccess: (data: DeleteSessionResponseData) => {
+      authContext?.setUserData(data.user);
+      router.push("/");
+      toast({ title: "Session deleted!" });
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error.response?.data?.error || "An unexpected error occurred.";
+      toast({
+        title: "Something went wrong",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <div className="flex flex-col gap-4 p-4">
       <div>
-        <Select defaultValue={defaultValue} onValueChange={onSelectChange}>
+        <Select defaultValue={defaultValue} onValueChange={handleSelectChange}>
           <SelectTrigger>
             <SelectValue placeholder="Frequency" />
           </SelectTrigger>
@@ -268,6 +333,21 @@ function SettingsContent({
           </SelectContent>
         </Select>
       </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="autoFit"
+          checked={autoFit}
+          onCheckedChange={handleAutoFitChange}
+        />
+        <label
+          htmlFor="autoFit"
+          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+        >
+          Auto Fit
+        </label>
+      </div>
+
       <div className="flex items-center gap-2">
         <Wifi
           className={`w-5 h-5 ${
@@ -289,11 +369,11 @@ function SettingsContent({
 
       <Button
         variant="destructive"
-        onClick={deleteSession}
-        disabled={isDeletingSession}
+        onClick={() => deleteSessionMutation.mutate()}
+        disabled={deleteSessionMutation.isPending}
         className="mt-2"
       >
-        {isDeletingSession ? <Spinner /> : "Delete Session"}
+        {deleteSessionMutation.isPending ? <Spinner /> : "Delete Session"}
       </Button>
     </div>
   );

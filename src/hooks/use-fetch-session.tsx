@@ -1,36 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthContext } from "@/components/firebase-provider";
-import { useContext } from "react";
+import { SessionData } from "@/lib/types";
 
-interface SessionData {
-  creatorId: string;
-  viewerCount: number;
-  private: boolean;
-}
-
-const useFetchSessionData = (sessionKey: string | undefined) => {
+const useFetchSessionData = (sessionKey: string | null) => {
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const authContext = useContext(AuthContext);
   const router = useRouter();
   const { toast } = useToast();
-  const authContext = useContext(AuthContext);
 
   useEffect(() => {
-    const fetchSessionData = async () => {
-      if (!sessionKey || !authContext?.user) return;
+    if (!sessionKey || !authContext?.user) return;
 
-      setLoading(true);
+    setLoading(true);
 
-      try {
-        const sessionDoc = doc(firestore, "sessions", sessionKey);
-        const sessionSnap = await getDoc(sessionDoc);
-
+    const sessionDoc = doc(firestore, "sessions", sessionKey);
+    const unsubscribe = onSnapshot(
+      sessionDoc,
+      (sessionSnap) => {
         if (sessionSnap.exists()) {
           setSessionData(sessionSnap.data() as SessionData);
         } else {
@@ -40,22 +33,21 @@ const useFetchSessionData = (sessionKey: string | undefined) => {
           });
           router.push("/");
         }
-      } catch (error: unknown) {
+        setLoading(false);
+      },
+      (error) => {
+        console.error(error);
         toast({
           title: "Error fetching session",
-          description:
-            error instanceof Error
-              ? error.message
-              : "An unexpected error occurred.",
           variant: "destructive",
         });
-        router.push("/");
-      } finally {
         setLoading(false);
       }
-    };
+    );
 
-    fetchSessionData();
+    return () => {
+      unsubscribe();
+    };
   }, [router, toast, authContext?.user, sessionKey]);
 
   return { sessionData, loading };

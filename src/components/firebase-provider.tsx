@@ -5,14 +5,10 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
+import { UserData } from "@/lib/types";
 
 interface AuthProviderProps {
   children: ReactNode;
-}
-
-export interface UserData {
-  activeSessionId?: string;
-  id: string;
 }
 
 interface AuthContextType {
