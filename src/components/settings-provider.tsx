@@ -12,8 +12,10 @@ import React, {
 interface SettingsContextProps {
   boundType: BoundType;
   tracking: boolean;
+  updateDistance: string;
   setTracking: React.Dispatch<React.SetStateAction<boolean>>;
   setBoundType: (boundType: BoundType) => void;
+  setUpdateDistance: (distance: string) => void;
 }
 
 const SettingsContext = createContext<SettingsContextProps | undefined>(
@@ -33,6 +35,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
     return defaultValue;
   };
 
+  const [updateDistance, setUpdateDistance] = useState<string>(
+    getInitialState("updateDistance", "250")
+  );
   const [boundType, setBoundType] = useState<BoundType>(
     getInitialState("boundType", "nothing")
   );
@@ -52,11 +57,19 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, [boundType]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("updateDistance", JSON.stringify(updateDistance));
+    }
+  }, [updateDistance]);
+
   return (
     <SettingsContext.Provider
       value={{
+        updateDistance,
         boundType,
         tracking,
+        setUpdateDistance,
         setBoundType,
         setTracking,
       }}

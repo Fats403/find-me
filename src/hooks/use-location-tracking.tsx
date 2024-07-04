@@ -27,7 +27,7 @@ const useLocationTracking = (
   const [locations, setLocations] = useState<Position[]>([]);
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
-  const { tracking, setTracking } = useSettings();
+  const { tracking, setTracking, updateDistance } = useSettings();
 
   const watchIdRef = useRef<number | null>(null);
   const lastSentPositionRef = useRef<Position | null>(null);
@@ -59,7 +59,7 @@ const useLocationTracking = (
 
     if (
       !lastSentPosition ||
-      calculateDistance(lastSentPosition, position) > 500
+      calculateDistance(lastSentPosition, position) > Number(updateDistance)
     ) {
       sendLocationUpdate(sessionKey, position);
       lastSentPositionRef.current = position;
@@ -108,8 +108,7 @@ const useLocationTracking = (
 
         snapshot.forEach((doc) => {
           const data = doc.data() as Position;
-          const { id, lat, lng, timestamp } = data;
-          newLocations.push({ id, lat, lng, timestamp });
+          newLocations.push({ ...data });
         });
 
         newLocations.sort(

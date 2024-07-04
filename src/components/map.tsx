@@ -136,7 +136,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
               type="line"
               paint={{
                 "line-color": "#7D7F7C",
-                "line-width": 6,
+                "line-width": 5,
                 "line-opacity": 0.7,
               }}
             />

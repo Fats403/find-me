@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, { useState, useContext, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,9 +42,21 @@ import { useParams } from "next/navigation";
 import useFetchSessionData from "@/hooks/use-fetch-session";
 import { useSettings } from "@/components/settings-provider";
 import useDirections from "@/hooks/use-directions";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function SessionPage() {
   const [open, setOpen] = useState(false);
@@ -125,41 +137,73 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="relative h-screen w-full">
-      <div className="z-50 absolute bottom-6 left-4">
-        <ThemeToggle />
-      </div>
-      <Button
-        variant="outline"
-        className="absolute z-50 right-4 top-20 rounded-full bg-white size-12 border-black border-2"
-        onMouseDown={() => {
-          setDirectionsOpen(true);
-        }}
-      >
-        <Milestone className="w-10 h-10" />
-      </Button>
+    <div
+      className="relative w-full overflow-hidden"
+      style={{ height: "100dvh" }}
+    >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="z-50 absolute top-52 right-4">
+            <ThemeToggle />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          <p>Theme</p>
+        </TooltipContent>
+      </Tooltip>
 
-      <Button
-        variant="outline"
-        className="absolute z-50 right-4 top-36 rounded-full bg-white size-12 border-black border-2 hover:bg-gray-200 dark:hover:bg-gray-800"
-        onMouseDown={() => {
-          handleCopyLink();
-        }}
-      >
-        <Link className="w-10 h-10" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            className="absolute z-50 right-4 top-20 rounded-full bg-white size-12 border-black border-2"
+            onMouseDown={() => {
+              setDirectionsOpen(true);
+            }}
+          >
+            <Milestone className="absolute w-6 h-6" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          <p>Directions</p>
+        </TooltipContent>
+      </Tooltip>
 
-      <Button
-        onMouseDown={() => {
-          setOpen(true);
-        }}
-        variant="ghost"
-        size="icon"
-        className="absolute z-50 right-4 top-4 rounded-full bg-white text-black dark:bg-black dark:text-white size-12 border-black border-2 hover:bg-gray-200 dark:hover:bg-gray-800"
-      >
-        <Settings className="h-6 w-6" />
-        <span className="sr-only">Toggle menu</span>
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            className="absolute z-50 right-4 top-36 rounded-full bg-white size-12 border-black border-2 hover:bg-gray-200 dark:hover:bg-gray-800"
+            onMouseDown={() => {
+              handleCopyLink();
+            }}
+          >
+            <Link className="absolute w-5 h-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          <p>Copy Session Link</p>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onMouseDown={() => {
+              setOpen(true);
+            }}
+            variant="ghost"
+            size="icon"
+            className="absolute z-50 right-4 top-4 rounded-full bg-white text-black dark:bg-black dark:text-white size-12 border-black border-2 hover:bg-gray-200 dark:hover:bg-gray-800"
+          >
+            <Settings className="h-6 w-6" />
+            <span className="sr-only">Toggle menu</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          <p>Location Settings</p>
+        </TooltipContent>
+      </Tooltip>
 
       {isSessionOwner && (
         <Button
@@ -221,7 +265,7 @@ export default function SessionPage() {
             <div className="grid gap-4 px-4 py-6 max-h-64 overflow-auto">
               {directions?.instructions.map((instruction, index) => (
                 <div className="flex items-start gap-4" key={index}>
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black text-white">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black dark:bg-white dark:text-black text-white">
                     <span className="text-sm font-medium">{index + 1}</span>
                   </div>
                   <div>
@@ -260,16 +304,21 @@ export default function SessionPage() {
           latestPassedPointIndex={latestPassedPointIndex}
           currentPosition={currentPosition}
         >
-          {locations.map(({ lat, lng, timestamp, id }, index) => (
-            <CustomMarker
-              id={id}
-              key={`${index}-${id}`}
-              lat={lat}
-              lng={lng}
-              timestamp={timestamp}
-              isMostRecent={index === locations.length - 1}
-            />
-          ))}
+          {locations.map(
+            ({ lat, lng, timestamp, id, speed, heading }, index) => (
+              <CustomMarker
+                id={id}
+                key={`${index}-${id}`}
+                lat={lat}
+                lng={lng}
+                speed={speed}
+                heading={heading}
+                timestamp={timestamp}
+                isMostRecent={index === locations.length - 1}
+              />
+            )
+          )}
+
           {sessionData?.pin && (
             <CustomMarker
               lat={sessionData?.pin.lat}
@@ -310,20 +359,8 @@ function SettingsContent({
   const router = useRouter();
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
-  const { setBoundType, boundType } = useSettings();
-  const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
-
-  useEffect(() => {
-    const updateOnlineStatus = () => setOnlineStatus(navigator.onLine);
-
-    window.addEventListener("online", updateOnlineStatus);
-    window.addEventListener("offline", updateOnlineStatus);
-
-    return () => {
-      window.removeEventListener("online", updateOnlineStatus);
-      window.removeEventListener("offline", updateOnlineStatus);
-    };
-  }, []);
+  const { setBoundType, boundType, updateDistance, setUpdateDistance } =
+    useSettings();
 
   const deleteSessionMutation = useMutation<DeleteSessionResponseData, Error>({
     mutationFn: async () => {
@@ -358,36 +395,38 @@ function SettingsContent({
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <p>Bind map to</p>
-      <RadioGroup
-        defaultValue={boundType}
-        value={boundType}
-        onValueChange={setBoundType}
-      >
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="nothing" id="r1" />
-          <Label htmlFor="r1">Nothing</Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="centerOnUser" id="r2" />
-          <Label htmlFor="r2">My Position</Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="fitToBounds" id="r3" />
-          <Label htmlFor="r3">Everything</Label>
-        </div>
-      </RadioGroup>
+      {isSessionOwner && (
+        <>
+          <Label htmlFor="update-distance-select">Update position every</Label>
+          <Select value={updateDistance} onValueChange={setUpdateDistance}>
+            <SelectTrigger id="update-distance-select" className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="100">100 meters</SelectItem>
+                <SelectItem value="250">250 meters</SelectItem>
+                <SelectItem value="500">500 meters</SelectItem>
+                <SelectItem value="1000">1 kilometer</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </>
+      )}
 
-      <div className="flex items-center gap-2">
-        <Wifi
-          className={`w-5 h-5 ${
-            onlineStatus ? "text-green-500" : "text-red-500"
-          }`}
-        />
-        <span className="text-sm font-medium">
-          {onlineStatus ? "Online" : "Offline"}
-        </span>
-      </div>
+      <Label htmlFor="update-distance-select">Bind map to</Label>
+      <Select value={boundType} onValueChange={setBoundType}>
+        <SelectTrigger id="update-distance-select" className="w-[180px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="nothing">Nothing</SelectItem>
+            <SelectItem value="centerOnUser">My position</SelectItem>
+            <SelectItem value="fitToBounds">All positions</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
 
       {isSessionOwner && (
         <Button

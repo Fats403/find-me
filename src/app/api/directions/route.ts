@@ -47,6 +47,7 @@ export async function POST(request: Request) {
           access_token: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN,
           geometries: "geojson",
           steps: true,
+          overview: "full",
         },
       }
     );

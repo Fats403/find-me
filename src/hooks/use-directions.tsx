@@ -1,3 +1,4 @@
+import { useSettings } from "@/components/settings-provider";
 import { useToast } from "@/components/ui/use-toast";
 import { auth } from "@/lib/firebase";
 import { GetDirectionsResponseData, Location } from "@/lib/types";
@@ -14,6 +15,7 @@ export default function useDirections({
   pin: Location | undefined;
 }) {
   const { toast } = useToast();
+  const { updateDistance } = useSettings();
   const [previousPin, setPreviousPin] = useState<Location | undefined>(() => {
     if (typeof window !== "undefined") {
       const savedPreviousPin = localStorage.getItem("previousPin");
@@ -100,13 +102,89 @@ export default function useDirections({
   ) => {
     let closestIndex = 0;
     let closestDistance = Infinity;
-    tripPath.forEach(([lng, lat], index) => {
-      const distance = calculateDistance(currentPosition, { lng, lat });
+
+    // Binary search to narrow down the closest segment
+    const binarySearchClosestSegment = (start: number, end: number): number => {
+      while (start <= end) {
+        const mid = Math.floor((start + end) / 2);
+        const distanceToMid = calculateDistance(currentPosition, {
+          lng: tripPath[mid][0],
+          lat: tripPath[mid][1],
+        });
+
+        if (distanceToMid < closestDistance) {
+          closestIndex = mid;
+          closestDistance = distanceToMid;
+        }
+
+        if (distanceToMid === 0) {
+          return mid;
+        } else if (
+          mid > 0 &&
+          calculateDistance(currentPosition, {
+            lng: tripPath[mid - 1][0],
+            lat: tripPath[mid - 1][1],
+          }) < distanceToMid
+        ) {
+          end = mid - 1;
+        } else if (
+          mid < tripPath.length - 1 &&
+          calculateDistance(currentPosition, {
+            lng: tripPath[mid + 1][0],
+            lat: tripPath[mid + 1][1],
+          }) < distanceToMid
+        ) {
+          start = mid + 1;
+        } else {
+          break;
+        }
+      }
+
+      return closestIndex;
+    };
+
+    // Initialize closest index and distance
+    closestIndex = binarySearchClosestSegment(0, tripPath.length - 1);
+
+    // Fine-tune the search within a threshold distance around the closest index
+    const thresholdDistance = Number(updateDistance) * 3; // Define a reasonable threshold based on updateDistance
+    let lowerBound = closestIndex;
+    let upperBound = closestIndex;
+
+    // Expand lower bound until the distance exceeds thresholdDistance
+    while (
+      lowerBound > 0 &&
+      calculateDistance(currentPosition, {
+        lng: tripPath[lowerBound - 1][0],
+        lat: tripPath[lowerBound - 1][1],
+      }) <= thresholdDistance
+    ) {
+      lowerBound--;
+    }
+
+    // Expand upper bound until the distance exceeds thresholdDistance
+    while (
+      upperBound < tripPath.length - 1 &&
+      calculateDistance(currentPosition, {
+        lng: tripPath[upperBound + 1][0],
+        lat: tripPath[upperBound + 1][1],
+      }) <= thresholdDistance
+    ) {
+      upperBound++;
+    }
+
+    // Fine-tune the search within the calculated bounds
+    for (let i = lowerBound; i <= upperBound; i++) {
+      const distance = calculateDistance(currentPosition, {
+        lng: tripPath[i][0],
+        lat: tripPath[i][1],
+      });
       if (distance < closestDistance) {
         closestDistance = distance;
-        closestIndex = index;
+        closestIndex = i;
       }
-    });
+    }
+
     return closestIndex;
   };
 

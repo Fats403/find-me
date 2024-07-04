@@ -65,14 +65,17 @@ export default function Component() {
   }
 
   return (
-    <div className="min-h-screen flex justify-center items-center">
+    <div
+      className="flex justify-center items-center relative overflow-hidden"
+      style={{ height: "100dvh" }}
+    >
       <Image
         className="w-full h-full inset-0 z-0 absolute object-cover"
         fill
         alt="find me bg"
         src="/bg-image.webp"
       />
-      <section className="relative z-10 flex h-[80dvh] w-full flex-col items-center justify-center space-y-6 px-4 md:px-6">
+      <section className="relative z-10 flex h-full w-full flex-col items-center justify-center space-y-6 px-4 md:px-6">
         <div className="space-y-2 text-center flex justify-center flex-col items-center">
           <Image
             src="/android-chrome-192x192.png"
@@ -82,7 +85,7 @@ export default function Component() {
             alt="find me logo"
             priority
           />
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+          <h1 className="text-4xl font-bold text-black dark:text-black tracking-tight sm:text-5xl md:text-6xl">
             Find Me
           </h1>
           {!authContext?.user && (

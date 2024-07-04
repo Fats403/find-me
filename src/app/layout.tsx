@@ -8,6 +8,7 @@ import ReactQueryProvider from "@/components/query-provider";
 import AuthProvider from "@/components/firebase-provider";
 import { SettingsProvider } from "@/components/settings-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -33,6 +34,10 @@ export default function RootLayout({
         <link rel="icon" href="/favicon-32x32.png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="theme-color" content="#ffffff" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
       </head>
       <body
         className={cn(
@@ -49,8 +54,10 @@ export default function RootLayout({
                 enableSystem
                 disableTransitionOnChange
               >
-                {children}
-                <Toaster />
+                <TooltipProvider>
+                  {children}
+                  <Toaster />
+                </TooltipProvider>
               </ThemeProvider>
             </SettingsProvider>
           </ReactQueryProvider>

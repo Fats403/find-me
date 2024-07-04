@@ -2,6 +2,7 @@ import React from "react";
 import { Marker } from "react-map-gl";
 import { MapPin, Pin, User } from "lucide-react";
 import { Position } from "@/lib/types";
+import Image from "next/image";
 
 interface CustomMarkerPosition extends Position {
   isMostRecent?: boolean;
@@ -12,15 +13,18 @@ const CustomMarker: React.FC<CustomMarkerPosition> = ({
   lat,
   lng,
   timestamp,
+  speed,
+  heading,
   isMostRecent,
   isPin,
 }) => {
   return (
     <Marker latitude={lat} longitude={lng}>
       <div className="relative group cursor-pointer">
-        <div className="hidden group-hover:block absolute bottom-full mb-2 p-2 bg-white text-black dark:bg-black dark:text-white border border-gray-300 rounded-xl shadow-lg w-40 -left-16">
+        <div className="hidden group-hover:block group-hover:z-50 absolute bottom-full mb-2 p-2 bg-white text-black dark:bg-black dark:text-white border border-gray-300 rounded-xl shadow-lg w-40 -translate-x-[42%]">
           <p>Lat: {lat}</p>
           <p>Lng: {lng}</p>
+          {speed && <p>Speed: {formatSpeed(speed)} km/h</p>}
           {new Date(timestamp).toLocaleString()}
         </div>
         {isMostRecent ? (
@@ -32,11 +36,24 @@ const CustomMarker: React.FC<CustomMarkerPosition> = ({
             <Pin className="w-5 h-5 text-red-500" />
           </div>
         ) : (
-          <div className="w-3 h-3 bg-red-500/70 rounded-full border border-[#7D7F7C]" />
+          <>
+            {heading ? (
+              <div
+                className="inline-block"
+                style={{ transform: `rotate(${heading - 90}deg)` }}
+              >
+                <Image src="/arrow.webp" alt="arrow" width={16} height={16} />
+              </div>
+            ) : (
+              <div className="w-3 h-3 bg-white/70 rounded-full border border-black" />
+            )}
+          </>
         )}
       </div>
     </Marker>
   );
 };
+
+const formatSpeed = (speed: number) => (Number(speed) * 3.6).toFixed(1);
 
 export default CustomMarker;
