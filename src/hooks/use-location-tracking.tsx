@@ -59,7 +59,7 @@ const useLocationTracking = (
 
     if (
       !lastSentPosition ||
-      calculateDistance(lastSentPosition, position) > 10
+      calculateDistance(lastSentPosition, position) > 500
     ) {
       sendLocationUpdate(sessionKey, position);
       lastSentPositionRef.current = position;
