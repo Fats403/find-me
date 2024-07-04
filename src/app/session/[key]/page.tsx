@@ -44,6 +44,7 @@ import { useSettings } from "@/components/settings-provider";
 import useDirections from "@/hooks/use-directions";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function SessionPage() {
   const [open, setOpen] = useState(false);
@@ -125,6 +126,9 @@ export default function SessionPage() {
 
   return (
     <div className="relative h-screen w-full">
+      <div className="z-50 absolute bottom-6 left-4">
+        <ThemeToggle />
+      </div>
       <Button
         variant="outline"
         className="absolute z-50 right-4 top-20 rounded-full bg-white size-12 border-black border-2"
@@ -137,7 +141,7 @@ export default function SessionPage() {
 
       <Button
         variant="outline"
-        className="absolute z-50 right-4 top-36 rounded-full bg-white size-12 border-black border-2"
+        className="absolute z-50 right-4 top-36 rounded-full bg-white size-12 border-black border-2 hover:bg-gray-200 dark:hover:bg-gray-800"
         onMouseDown={() => {
           handleCopyLink();
         }}
@@ -151,7 +155,7 @@ export default function SessionPage() {
         }}
         variant="ghost"
         size="icon"
-        className="absolute z-50 right-4 top-4 rounded-full bg-white size-12 border-black border-2"
+        className="absolute z-50 right-4 top-4 rounded-full bg-white text-black dark:bg-black dark:text-white size-12 border-black border-2 hover:bg-gray-200 dark:hover:bg-gray-800"
       >
         <Settings className="h-6 w-6" />
         <span className="sr-only">Toggle menu</span>
@@ -160,7 +164,7 @@ export default function SessionPage() {
       {isSessionOwner && (
         <Button
           onClick={toggleTracking}
-          className="absolute z-50 left-4 top-4 bg-white text-black border-black border-2 hover:bg-gray-200"
+          className="absolute z-50 left-4 top-4 bg-white text-black dark:bg-black dark:text-white border-black border-2 hover:bg-gray-200 dark:hover:bg-gray-800"
         >
           {!tracking ? (
             <Eye className="h-6 w-6 mr-2" />
@@ -267,21 +271,12 @@ export default function SessionPage() {
             />
           ))}
           {sessionData?.pin && (
-            <Marker
-              latitude={sessionData.pin.lat}
-              longitude={sessionData.pin.lng}
-            >
-              <div className="relative group cursor-pointer">
-                <div className="hidden group-hover:block absolute bottom-full mb-2 p-2 bg-white border border-gray-300 rounded shadow-lg w-40 -left-16">
-                  <p>Lat: {sessionData.pin.lat}</p>
-                  <p>Lng: {sessionData.pin.lng}</p>
-                </div>
-
-                <div className="flex justify-center items-center size-8 rounded-full bg-white border-2 border-[#7D7F7C]">
-                  <Pin className="w-5 h-5 text-red-500" />
-                </div>
-              </div>
-            </Marker>
+            <CustomMarker
+              lat={sessionData?.pin.lat}
+              lng={sessionData?.pin.lng}
+              timestamp={sessionData?.pin.timestamp}
+              isPin
+            />
           )}
 
           {currentPosition && (

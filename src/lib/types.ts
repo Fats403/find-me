@@ -15,7 +15,7 @@ export interface Position extends Location {
 export interface SessionData {
   creatorId: string;
   viewerCount: number;
-  pin?: Location;
+  pin?: Position;
 }
 
 export interface CreateSessionResponseData {

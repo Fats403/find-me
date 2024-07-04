@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import ReactQueryProvider from "@/components/query-provider";
 import AuthProvider from "@/components/firebase-provider";
 import { SettingsProvider } from "@/components/settings-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -42,8 +43,15 @@ export default function RootLayout({
         <AuthProvider>
           <ReactQueryProvider>
             <SettingsProvider>
-              {children}
-              <Toaster />
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+                <Toaster />
+              </ThemeProvider>
             </SettingsProvider>
           </ReactQueryProvider>
         </AuthProvider>
