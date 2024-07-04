@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useMemo,
+  SetStateAction,
+  Dispatch,
+} from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,8 +22,18 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerDescription,
+  DrawerFooter,
 } from "@/components/ui/drawer";
-import { Wifi, Eye, Link, Settings, EyeOff, Pin } from "lucide-react";
+import {
+  Wifi,
+  Eye,
+  Link,
+  Settings,
+  EyeOff,
+  Pin,
+  Signpost,
+  Milestone,
+} from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -41,6 +58,9 @@ import { useParams } from "next/navigation";
 import useFetchSessionData from "@/hooks/use-fetch-session";
 import { useSettings } from "@/components/settings-provider";
 import { Checkbox } from "@/components/ui/checkbox";
+import useDirections from "@/hooks/use-directions";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 const intervalOptions = {
   "30000": "Every 30 seconds",
@@ -51,6 +71,7 @@ const intervalOptions = {
 
 export default function SessionPage() {
   const [open, setOpen] = useState(false);
+  const [directionsOpen, setDirectionsOpen] = useState(false);
   const [placingPin, setPlacingPin] = useState(false);
 
   const { key } = useParams();
@@ -61,7 +82,6 @@ export default function SessionPage() {
     [key]
   );
 
-  const isDesktop = useMediaQuery("(min-width: 768px)");
   const authContext = useContext(AuthContext);
 
   const { tracking, setTracking } = useSettings();
@@ -71,6 +91,22 @@ export default function SessionPage() {
     sessionKey,
     sessionData
   );
+
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isSessionOwner = authContext?.user?.uid === sessionData?.creatorId;
+
+  const {
+    directions,
+    isLoading: isLoadingDirections,
+    latestPassedPointIndex,
+  } = useDirections({
+    currentPosition,
+    pin: sessionData?.pin,
+  });
+
+  const toggleTracking = () => {
+    setTracking((prev) => !prev);
+  };
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -84,52 +120,6 @@ export default function SessionPage() {
         });
       });
     }
-  };
-
-  const requestLocationPermission = () => {
-    navigator.geolocation.getCurrentPosition(
-      () => {},
-      (error) => {
-        let description = error.message;
-        if (error.code === error.PERMISSION_DENIED) {
-          description = "Permission denied. Please enable location access.";
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          description = "Position unavailable. Please try again.";
-        } else if (error.code === error.TIMEOUT) {
-          description = "Location request timed out. Please try again.";
-        }
-        toast({
-          title: "Location error",
-          description,
-          variant: "destructive",
-        });
-      }
-    );
-  };
-
-  const toggleTracking = () => {
-    setTracking((prev) => {
-      const newState = !prev;
-      if (newState) {
-        navigator.permissions
-          .query({ name: "geolocation" })
-          .then((result) => {
-            if (result.state !== "granted") {
-              toast({
-                title: "Permission required",
-                description: "Please enable location access to start tracking.",
-                variant: "destructive",
-              });
-              requestLocationPermission();
-            }
-          })
-          .catch((error) => {
-            console.error("Permission query failed:", error);
-            setTracking(false);
-          });
-      }
-      return newState;
-    });
   };
 
   if (loading || authContext?.loading) {
@@ -163,6 +153,16 @@ export default function SessionPage() {
         variant="outline"
         className="absolute z-50 right-4 top-20 rounded-full bg-white size-12 border-black border-2"
         onMouseDown={() => {
+          setDirectionsOpen(true);
+        }}
+      >
+        <Milestone className="w-10 h-10" />
+      </Button>
+
+      <Button
+        variant="outline"
+        className="absolute z-50 right-4 top-36 rounded-full bg-white size-12 border-black border-2"
+        onMouseDown={() => {
           handleCopyLink();
         }}
       >
@@ -181,28 +181,31 @@ export default function SessionPage() {
         <span className="sr-only">Toggle menu</span>
       </Button>
 
-      <Button
-        onClick={toggleTracking}
-        className="absolute z-50 left-4 top-4 bg-white text-black border-black border-2 hover:bg-gray-200"
-      >
-        {!tracking ? (
-          <Eye className="h-6 w-6 mr-2" />
-        ) : (
-          <EyeOff className="h-6 w-6 mr-2" />
-        )}
-        {!tracking ? "Enable Tracking" : "Disable Tracking"}
-      </Button>
+      {isSessionOwner && (
+        <Button
+          onClick={toggleTracking}
+          className="absolute z-50 left-4 top-4 bg-white text-black border-black border-2 hover:bg-gray-200"
+        >
+          {!tracking ? (
+            <Eye className="h-6 w-6 mr-2" />
+          ) : (
+            <EyeOff className="h-6 w-6 mr-2" />
+          )}
+          {!tracking ? "Enable Tracking" : "Disable Tracking"}
+        </Button>
+      )}
 
       {isDesktop ? (
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Location Updates</DialogTitle>
+              <DialogTitle>Location Settings</DialogTitle>
               <DialogDescription>
                 Configure your location update settings.
               </DialogDescription>
             </DialogHeader>
             <SettingsContent
+              isSessionOwner={isSessionOwner}
               placingPin={placingPin}
               setPlacingPin={setPlacingPin}
             />
@@ -212,12 +215,13 @@ export default function SessionPage() {
         <Drawer open={open} onOpenChange={handleOpenChange}>
           <DrawerContent>
             <DrawerHeader className="text-left">
-              <DrawerTitle>Location Updates</DrawerTitle>
+              <DrawerTitle>Location Settings</DrawerTitle>
               <DrawerDescription>
                 Configure your location update settings.
               </DrawerDescription>
             </DrawerHeader>
             <SettingsContent
+              isSessionOwner={isSessionOwner}
               placingPin={placingPin}
               setPlacingPin={setPlacingPin}
             />
@@ -225,12 +229,56 @@ export default function SessionPage() {
         </Drawer>
       )}
 
+      <Drawer open={directionsOpen} onOpenChange={setDirectionsOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Step-by-Step Directions</DrawerTitle>
+            <DrawerDescription>
+              Follow these steps to get to the pinned location.
+            </DrawerDescription>
+          </DrawerHeader>
+          {directions ? (
+            <div className="grid gap-4 px-4 py-6 max-h-64 overflow-auto">
+              {directions?.instructions.map((instruction, index) => (
+                <div className="flex items-start gap-4" key={index}>
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black text-white">
+                    <span className="text-sm font-medium">{index + 1}</span>
+                  </div>
+                  <div>
+                    <h4 className="font-medium">{instruction.maneuver}</h4>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : isLoadingDirections ? (
+            <div className="w-full flex justify-center items-center">
+              <Spinner />
+            </div>
+          ) : (
+            <div className="text-center text-sm text-red-500 my-4 px-4">
+              {!sessionData?.pin && (
+                <p>
+                  The session creator must set a pin beore you can get
+                  directions.
+                </p>
+              )}
+              {!currentPosition && (
+                <p>You must enable tracking to get directions.</p>
+              )}
+            </div>
+          )}
+        </DrawerContent>
+      </Drawer>
+
       <div className="h-full w-full overflow-hidden">
         <MapComponent
           center={{ lat: 51.0447, lng: -114.0719 }}
           placingPin={placingPin}
           sessionKey={sessionKey}
           setPlacingPin={setPlacingPin}
+          tripPath={directions?.tripPath}
+          latestPassedPointIndex={latestPassedPointIndex}
+          currentPosition={currentPosition}
         >
           {locations.map(({ lat, lng, timestamp, id }, index) => (
             <CustomMarker
@@ -252,6 +300,18 @@ export default function SessionPage() {
               </div>
             </Marker>
           )}
+
+          {currentPosition && (
+            <Marker
+              latitude={currentPosition.lat}
+              longitude={currentPosition.lng}
+            >
+              <div className="relative flex justify-center items-center">
+                <div className="absolute w-8 h-8 bg-blue-500 rounded-full opacity-75 animate-ping" />
+                <div className="relative w-4 h-4 bg-blue-500 rounded-full" />
+              </div>
+            </Marker>
+          )}
         </MapComponent>
       </div>
     </div>
@@ -261,13 +321,18 @@ export default function SessionPage() {
 interface SettingsContentProps {
   placingPin: boolean;
   setPlacingPin: (placing: boolean) => void;
+  isSessionOwner: boolean;
 }
 
-function SettingsContent({ placingPin, setPlacingPin }: SettingsContentProps) {
+function SettingsContent({
+  placingPin,
+  setPlacingPin,
+  isSessionOwner,
+}: SettingsContentProps) {
   const router = useRouter();
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
-  const { updateInterval, setUpdateInterval, setAutoFit, autoFit } =
+  const { updateInterval, setUpdateInterval, setBoundType, boundType } =
     useSettings();
   const defaultValue = updateInterval.toString();
   const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
@@ -288,10 +353,6 @@ function SettingsContent({ placingPin, setPlacingPin }: SettingsContentProps) {
     setUpdateInterval(Number(value));
   };
 
-  const handleAutoFitChange = (value: boolean) => {
-    setAutoFit(value);
-  };
-
   const deleteSessionMutation = useMutation<DeleteSessionResponseData, Error>({
     mutationFn: async () => {
       const idToken = await authContext?.user?.getIdToken(true);
@@ -302,6 +363,12 @@ function SettingsContent({ placingPin, setPlacingPin }: SettingsContentProps) {
       });
     },
     onSuccess: (data: DeleteSessionResponseData) => {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("directions");
+        localStorage.removeItem("previousPin");
+        localStorage.removeItem("tracking");
+      }
+
       authContext?.setUserData(data.user);
       router.push("/");
       toast({ title: "Session deleted!" });
@@ -319,34 +386,46 @@ function SettingsContent({ placingPin, setPlacingPin }: SettingsContentProps) {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <div>
-        <Select defaultValue={defaultValue} onValueChange={handleSelectChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Frequency" />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(intervalOptions).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {isSessionOwner && (
+        <div>
+          <p className="mb-2">Send location updates</p>
+          <Select
+            defaultValue={defaultValue}
+            onValueChange={handleSelectChange}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Frequency" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(intervalOptions).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="autoFit"
-          checked={autoFit}
-          onCheckedChange={handleAutoFitChange}
-        />
-        <label
-          htmlFor="autoFit"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          Auto Fit
-        </label>
-      </div>
+      <p>Bind map to</p>
+      <RadioGroup
+        defaultValue={boundType}
+        value={boundType}
+        onValueChange={setBoundType}
+      >
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="nothing" id="r1" />
+          <Label htmlFor="r1">Nothing</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="centerOnUser" id="r2" />
+          <Label htmlFor="r2">My Position</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="fitToBounds" id="r3" />
+          <Label htmlFor="r3">Everything</Label>
+        </div>
+      </RadioGroup>
 
       <div className="flex items-center gap-2">
         <Wifi
@@ -359,22 +438,26 @@ function SettingsContent({ placingPin, setPlacingPin }: SettingsContentProps) {
         </span>
       </div>
 
-      <Button
-        onClick={() => setPlacingPin(!placingPin)}
-        variant="outline"
-        className="mt-2"
-      >
-        {placingPin ? "Cancel Pin Placement" : "Place a Pin on the Map"}
-      </Button>
+      {isSessionOwner && (
+        <Button
+          onClick={() => setPlacingPin(!placingPin)}
+          variant="outline"
+          className="mt-2"
+        >
+          {placingPin ? "Cancel Pin Placement" : "Place a Pin on the Map"}
+        </Button>
+      )}
 
-      <Button
-        variant="destructive"
-        onClick={() => deleteSessionMutation.mutate()}
-        disabled={deleteSessionMutation.isPending}
-        className="mt-2"
-      >
-        {deleteSessionMutation.isPending ? <Spinner /> : "Delete Session"}
-      </Button>
+      {isSessionOwner && (
+        <Button
+          variant="destructive"
+          onClick={() => deleteSessionMutation.mutate()}
+          disabled={deleteSessionMutation.isPending}
+          className="mt-2"
+        >
+          {deleteSessionMutation.isPending ? <Spinner /> : "Delete Session"}
+        </Button>
+      )}
     </div>
   );
 }

@@ -12,6 +12,8 @@ import {
   persistentLocalCache,
   doc,
   setDoc,
+  collection,
+  serverTimestamp,
 } from "firebase/firestore";
 import { Location } from "./types";
 
@@ -42,10 +44,28 @@ export const firestore = initializeFirestore(app, {
   localCache: persistentLocalCache(),
 });
 
-export default function setPinLocation(
+export function setPinLocation(
   sessionKey: string | null,
   pin: Location
 ): Promise<void> {
   const docRef = doc(firestore, `sessions/${sessionKey}`);
   return setDoc(docRef, { pin }, { merge: true });
+}
+
+export function sendLocationUpdate(
+  sessionKey: string | null,
+  position: GeolocationPosition
+): Promise<void> {
+  const { latitude, longitude } = position.coords;
+  const locationCollectionRef = collection(
+    firestore,
+    `sessions/${sessionKey}/locations`
+  );
+  const docRef = doc(locationCollectionRef);
+  return setDoc(docRef, {
+    id: docRef.id,
+    lat: latitude,
+    lng: longitude,
+    timestamp: serverTimestamp(),
+  });
 }

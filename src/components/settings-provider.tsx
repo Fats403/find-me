@@ -1,5 +1,6 @@
 "use client";
 
+import { BoundType } from "@/lib/types";
 import React, {
   createContext,
   useState,
@@ -9,12 +10,12 @@ import React, {
 } from "react";
 
 interface SettingsContextProps {
-  autoFit: boolean;
+  boundType: BoundType;
   updateInterval: number;
   tracking: boolean;
-  setAutoFit: (value: boolean) => void;
   setUpdateInterval: (value: number) => void;
   setTracking: React.Dispatch<React.SetStateAction<boolean>>;
+  setBoundType: (boundType: BoundType) => void;
 }
 
 const SettingsContext = createContext<SettingsContextProps | undefined>(
@@ -34,8 +35,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
     return defaultValue;
   };
 
-  const [autoFit, setAutoFit] = useState<boolean>(
-    getInitialState("autoFit", true)
+  const [boundType, setBoundType] = useState<BoundType>(
+    getInitialState("boundType", "nothing")
   );
   const [updateInterval, setUpdateInterval] = useState<number>(
     getInitialState("updateInterval", 60000)
@@ -58,17 +59,17 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("autoFit", JSON.stringify(autoFit));
+      localStorage.setItem("boundType", JSON.stringify(boundType));
     }
-  }, [autoFit]);
+  }, [boundType]);
 
   return (
     <SettingsContext.Provider
       value={{
-        autoFit,
+        boundType,
         updateInterval,
         tracking,
-        setAutoFit,
+        setBoundType,
         setUpdateInterval,
         setTracking,
       }}

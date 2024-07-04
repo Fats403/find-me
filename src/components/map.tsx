@@ -1,8 +1,14 @@
-import setPinLocation from "@/lib/firebase";
 import React, { useState, useCallback, useEffect } from "react";
-import Map, { ViewStateChangeEvent, MapLayerMouseEvent } from "react-map-gl";
+import Map, {
+  ViewStateChangeEvent,
+  MapLayerMouseEvent,
+  Source,
+  Layer,
+} from "react-map-gl";
 import { LngLatBounds } from "mapbox-gl";
 import { useSettings } from "./settings-provider";
+import { setPinLocation } from "@/lib/firebase";
+import { Location } from "@/lib/types";
 
 interface MapComponentProps {
   containerStyle?: React.CSSProperties;
@@ -12,6 +18,9 @@ interface MapComponentProps {
   placingPin: boolean;
   setPlacingPin: (placing: boolean) => void;
   sessionKey: string | null;
+  tripPath?: [number, number][]; // Add tripPath as a prop
+  latestPassedPointIndex?: number | null; // Add latestPassedPointIndex as a prop
+  currentPosition?: Location | null; // Add currentPosition as a prop
 }
 
 const defaultContainerStyle: React.CSSProperties = {
@@ -27,13 +36,16 @@ const defaultCenter = {
 const MapComponent: React.FC<MapComponentProps> = ({
   containerStyle = defaultContainerStyle,
   center = defaultCenter,
-  zoom = 9,
+  zoom = 8,
   children,
   placingPin,
   sessionKey,
   setPlacingPin,
+  tripPath = [],
+  latestPassedPointIndex = null,
+  currentPosition,
 }) => {
-  const { autoFit } = useSettings();
+  const { boundType } = useSettings();
   const [viewport, setViewport] = useState({
     latitude: center.lat,
     longitude: center.lng,
@@ -57,32 +69,40 @@ const MapComponent: React.FC<MapComponentProps> = ({
   );
 
   useEffect(() => {
-    if (!autoFit) return;
-
-    const bounds = new LngLatBounds();
-    React.Children.forEach(children, (child) => {
-      if (React.isValidElement(child)) {
-        const { latitude, longitude, lat, lng } = child.props;
-        if (latitude && longitude) {
-          bounds.extend([longitude, latitude]);
-        } else if (lat && lng) {
-          bounds.extend([lng, lat]);
+    if (boundType === "fitToBounds") {
+      const bounds = new LngLatBounds();
+      React.Children.forEach(children, (child) => {
+        if (React.isValidElement(child)) {
+          const { latitude, longitude, lat, lng } = child.props;
+          if (latitude && longitude) {
+            bounds.extend([longitude, latitude]);
+          } else if (lat && lng) {
+            bounds.extend([lng, lat]);
+          }
         }
+      });
+
+      if (!bounds.isEmpty()) {
+        const { _ne, _sw } = bounds;
+        setViewport({
+          latitude: (_ne.lat + _sw.lat) / 2,
+          longitude: (_ne.lng + _sw.lng) / 2,
+          zoom: 8,
+        });
       }
-    });
-
-    if (bounds.isEmpty()) {
-      return;
+    } else if (boundType === "centerOnUser" && currentPosition) {
+      setViewport({
+        latitude: currentPosition.lat,
+        longitude: currentPosition.lng,
+        zoom: 15,
+      });
     }
+  }, [children, boundType, currentPosition]);
 
-    const { _ne, _sw } = bounds;
-
-    setViewport({
-      latitude: (_ne.lat + _sw.lat) / 2,
-      longitude: (_ne.lng + _sw.lng) / 2,
-      zoom: 10,
-    });
-  }, [children, autoFit]);
+  const unpassedTripPath =
+    latestPassedPointIndex !== null
+      ? tripPath.slice(latestPassedPointIndex)
+      : tripPath;
 
   return (
     <div style={containerStyle}>
@@ -94,6 +114,29 @@ const MapComponent: React.FC<MapComponentProps> = ({
         mapStyle="mapbox://styles/mapbox/outdoors-v12"
         style={{ width: containerStyle.width, height: containerStyle.height }}
       >
+        {unpassedTripPath.length > 0 && (
+          <Source
+            id="route"
+            type="geojson"
+            data={{
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: unpassedTripPath,
+              },
+            }}
+          >
+            <Layer
+              id="route"
+              type="line"
+              paint={{
+                "line-color": "#5f9ea0",
+                "line-width": 6,
+              }}
+            />
+          </Source>
+        )}
         {children}
       </Map>
     </div>

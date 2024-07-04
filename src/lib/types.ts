@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+export type BoundType = "fitToBounds" | "centerOnUser" | "nothing";
 
 export interface Location {
   lat: number;
@@ -23,6 +24,14 @@ export interface CreateSessionResponseData {
 export interface DeleteSessionResponseData {
   user: UserData;
   message: string;
+}
+
+export interface GetDirectionsResponseData {
+  tripPath: [number, number][];
+  instructions: {
+    maneuver: string;
+    location: [number, number];
+  }[];
 }
 
 export interface UserData {

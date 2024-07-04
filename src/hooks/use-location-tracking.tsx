@@ -1,75 +1,55 @@
 "use client";
 
 import { useState, useEffect, useContext } from "react";
-import {
-  collection,
-  setDoc,
-  doc,
-  serverTimestamp,
-  onSnapshot,
-  Timestamp,
-} from "firebase/firestore";
-import { firestore } from "@/lib/firebase";
+import { collection, onSnapshot, Timestamp } from "firebase/firestore";
+import { firestore, sendLocationUpdate } from "@/lib/firebase";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthContext } from "@/components/firebase-provider";
-import { Position, SessionData } from "@/lib/types";
+import { Location, Position, SessionData } from "@/lib/types";
 import { useSettings } from "@/components/settings-provider";
 
+const geoOptions = { enableHighAccuracy: true };
+
 const useLocationTracking = (
-  sessionKey: string | undefined,
+  sessionKey: string | null,
   sessionData: SessionData | null
 ) => {
-  const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
+  const [currentPosition, setCurrentPosition] = useState<Location | null>(
+    () => {
+      if (typeof window !== "undefined") {
+        const savedPosition = localStorage.getItem("currentPosition");
+        return savedPosition ? JSON.parse(savedPosition) : null;
+      }
+    }
+  );
   const [locations, setLocations] = useState<Position[]>([]);
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
   const { updateInterval, tracking, setTracking } = useSettings();
 
+  const handlePositionError = (error: GeolocationPositionError) => {
+    console.error("Error getting location:", error);
+
+    let description = error.message;
+
+    if (error.code === error.PERMISSION_DENIED) {
+      description = "Permission denied. Please enable location access.";
+    } else if (error.code === error.POSITION_UNAVAILABLE) {
+      description = "Position unavailable. Please try again.";
+    } else if (error.code === error.TIMEOUT) {
+      description = "Location request timed out. Please try again.";
+    }
+
+    setTracking(false);
+
+    toast({
+      title: "Location error",
+      description,
+      variant: "destructive",
+    });
+  };
+
   useEffect(() => {
-    const sendLocationUpdate = async (position: GeolocationPosition) => {
-      const { latitude, longitude } = position.coords;
-      const locationCollectionRef = collection(
-        firestore,
-        `sessions/${sessionKey}/locations`
-      );
-      const docRef = doc(locationCollectionRef);
-      await setDoc(docRef, {
-        id: docRef.id,
-        lat: latitude,
-        lng: longitude,
-        timestamp: serverTimestamp(),
-      });
-      setCurrentPosition({
-        id: docRef.id,
-        lat: latitude,
-        lng: longitude,
-        timestamp: Timestamp.now(),
-      });
-      console.log("sent location update");
-    };
-
-    const handlePositionError = (error: GeolocationPositionError) => {
-      console.error("Error getting location:", error);
-      let description = error.message;
-      if (error.code === error.PERMISSION_DENIED) {
-        description = "Permission denied. Please enable location access.";
-      } else if (error.code === error.POSITION_UNAVAILABLE) {
-        description = "Position unavailable. Please try again.";
-      } else if (error.code === error.TIMEOUT) {
-        description = "Location request timed out. Please try again.";
-      }
-      toast({
-        title: "Location error",
-        description,
-        variant: "destructive",
-      });
-      setTracking(false);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("tracking", JSON.stringify(false));
-      }
-    };
-
-    const geoOptions = { enableHighAccuracy: true };
     let intervalId: NodeJS.Timeout;
 
     if (
@@ -79,7 +59,9 @@ const useLocationTracking = (
     ) {
       const fetchLocation = () => {
         navigator.geolocation.getCurrentPosition(
-          sendLocationUpdate,
+          (position) => {
+            sendLocationUpdate(sessionKey, position);
+          },
           handlePositionError,
           geoOptions
         );
@@ -102,6 +84,28 @@ const useLocationTracking = (
     authContext?.user,
     setTracking,
   ]);
+
+  useEffect(() => {
+    if (tracking) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const newPosition = {
+            lat: latitude,
+            lng: longitude,
+          };
+          setCurrentPosition(newPosition);
+          localStorage.setItem("currentPosition", JSON.stringify(newPosition));
+        },
+        handlePositionError,
+        geoOptions
+      );
+
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
+    }
+  }, [tracking]);
 
   useEffect(() => {
     if (!sessionKey) return;
