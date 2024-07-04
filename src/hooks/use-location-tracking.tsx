@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { AuthContext } from "@/components/firebase-provider";
 import { Location, Position, SessionData } from "@/lib/types";
 import { useSettings } from "@/components/settings-provider";
-import throttle from "lodash/throttle";
+import { calculateDistance } from "@/lib/utils";
 
 const geoOptions = { enableHighAccuracy: true };
 
@@ -30,6 +30,7 @@ const useLocationTracking = (
   const { tracking, setTracking } = useSettings();
 
   const watchIdRef = useRef<number | null>(null);
+  const lastSentPositionRef = useRef<Position | null>(null);
 
   const handlePositionError = (error: GeolocationPositionError) => {
     console.error("Error getting location:", error);
@@ -53,10 +54,17 @@ const useLocationTracking = (
     });
   };
 
-  const throttledSendLocationUpdate = throttle((position: Position) => {
-    console.log("sent location update");
-    sendLocationUpdate(sessionKey, position);
-  }, 3000);
+  const sendLocationIfFarEnough = (position: Position) => {
+    const lastSentPosition = lastSentPositionRef.current;
+
+    if (
+      !lastSentPosition ||
+      calculateDistance(lastSentPosition, position) > 10
+    ) {
+      sendLocationUpdate(sessionKey, position);
+      lastSentPositionRef.current = position;
+    }
+  };
 
   useEffect(() => {
     watchIdRef.current = navigator.geolocation.watchPosition(
@@ -76,7 +84,7 @@ const useLocationTracking = (
         localStorage.setItem("currentPosition", JSON.stringify(newPosition));
 
         if (tracking && sessionData?.creatorId === authContext?.user?.uid) {
-          throttledSendLocationUpdate(newPosition);
+          sendLocationIfFarEnough(newPosition);
         }
       },
       handlePositionError,
@@ -87,7 +95,6 @@ const useLocationTracking = (
       if (watchIdRef.current) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
-      throttledSendLocationUpdate.cancel(); // Cancel any pending throttled calls on unmount
     };
   }, [tracking, sessionData?.creatorId, sessionKey, authContext?.user]);
 
