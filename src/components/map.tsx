@@ -131,8 +131,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
               id="route"
               type="line"
               paint={{
-                "line-color": "#5f9ea0",
+                "line-color": "#7D7F7C",
                 "line-width": 6,
+                "line-opacity": 0.7,
               }}
             />
           </Source>

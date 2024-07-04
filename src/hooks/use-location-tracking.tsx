@@ -86,26 +86,24 @@ const useLocationTracking = (
   ]);
 
   useEffect(() => {
-    if (tracking) {
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          const newPosition = {
-            lat: latitude,
-            lng: longitude,
-          };
-          setCurrentPosition(newPosition);
-          localStorage.setItem("currentPosition", JSON.stringify(newPosition));
-        },
-        handlePositionError,
-        geoOptions
-      );
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const newPosition = {
+          lat: latitude,
+          lng: longitude,
+        };
+        setCurrentPosition(newPosition);
+        localStorage.setItem("currentPosition", JSON.stringify(newPosition));
+      },
+      handlePositionError,
+      geoOptions
+    );
 
-      return () => {
-        navigator.geolocation.clearWatch(watchId);
-      };
-    }
-  }, [tracking]);
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
 
   useEffect(() => {
     if (!sessionKey) return;
