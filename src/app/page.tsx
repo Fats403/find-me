@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
 import { Button } from "@/components/ui/button";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Spinner from "@/components/ui/spinner";
 import { AuthContext } from "@/components/firebase-provider";
@@ -16,10 +11,10 @@ import { useMutation } from "@tanstack/react-query";
 import { CreateSessionResponseData } from "@/lib/types";
 import axios from "axios";
 import { useToast } from "@/components/ui/use-toast";
+import Image from "next/image";
 
 export default function Component() {
   const authContext = useContext(AuthContext);
-  const [value, setValue] = useState("");
   const router = useRouter();
   const { toast } = useToast();
 
@@ -61,55 +56,58 @@ export default function Component() {
     }
   }, [router, authContext]);
 
+  if (authContext?.loading || authContext?.userData?.activeSessionId) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <Spinner className="text-black dark:text-white" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex justify-center items-center">
-      {!authContext?.loading && !authContext?.userData?.activeSessionId ? (
-        <section className="max-w-[400px] py-12">
-          <div className="space-y-6 text-center">
-            <h1 className="text-3xl font-bold">Find Me</h1>
-          </div>
-          <div className="space-y-6 flex justify-center items-center flex-col">
-            <InputOTP
-              maxLength={6}
-              autoFocus
-              value={value}
-              onChange={(value) => setValue(value)}
-            >
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-                <InputOTPSlot index={5} />
-              </InputOTPGroup>
-            </InputOTP>
-            <div className="grid gap-2">
-              <Button className="w-full">Join Session</Button>
-              {authContext?.user ? (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  disabled={createSessionMutation.isPending}
-                  onClick={() => createSessionMutation.mutate()}
-                >
-                  {createSessionMutation.isPending ? (
-                    <Spinner className="text-black dark:text-white" />
-                  ) : (
-                    "Create Session"
-                  )}
-                </Button>
-              ) : (
-                <GoogleButton />
-              )}
-            </div>
-          </div>
-        </section>
-      ) : (
-        <div className="min-h-screen flex justify-center items-center">
-          <Spinner className="text-black dark:text-white" />
+      <Image
+        className="w-full h-full inset-0 z-0 absolute object-cover"
+        fill
+        alt="find me bg"
+        src="/bg-image.webp"
+      />
+      <section className="relative z-10 flex h-[80dvh] w-full flex-col items-center justify-center space-y-6 px-4 md:px-6">
+        <div className="space-y-2 text-center flex justify-center flex-col items-center">
+          <Image
+            src="/android-chrome-192x192.png"
+            width={96}
+            height={96}
+            className="rounded-full mb-4 border-2 border-black"
+            alt="find me logo"
+            priority
+          />
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+            Find Me
+          </h1>
+          {!authContext?.user && (
+            <p className="max-w-[700px] text-muted-foreground md:text-xl">
+              Login to start a session
+            </p>
+          )}
         </div>
-      )}
+        {authContext?.user ? (
+          <Button
+            variant="outline"
+            className="shadow-[inset_0_0_0_2px_#616467] text-black px-12 py-4 rounded-full tracking-widest uppercase font-bold bg-transparent hover:bg-[#616467] hover:text-white dark:text-neutral-200 transition duration-200"
+            disabled={createSessionMutation.isPending}
+            onClick={() => createSessionMutation.mutate()}
+          >
+            {createSessionMutation.isPending ? (
+              <Spinner className="text-black dark:text-white" />
+            ) : (
+              "Create Session"
+            )}
+          </Button>
+        ) : (
+          <GoogleButton />
+        )}
+      </section>
     </div>
   );
 }

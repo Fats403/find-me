@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { collection, onSnapshot, Timestamp } from "firebase/firestore";
 import { firestore, sendLocationUpdate } from "@/lib/firebase";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthContext } from "@/components/firebase-provider";
 import { Location, Position, SessionData } from "@/lib/types";
 import { useSettings } from "@/components/settings-provider";
+import throttle from "lodash/throttle";
 
 const geoOptions = { enableHighAccuracy: true };
 
@@ -20,12 +21,15 @@ const useLocationTracking = (
         const savedPosition = localStorage.getItem("currentPosition");
         return savedPosition ? JSON.parse(savedPosition) : null;
       }
+      return null;
     }
   );
   const [locations, setLocations] = useState<Position[]>([]);
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
-  const { updateInterval, tracking, setTracking } = useSettings();
+  const { tracking, setTracking } = useSettings();
+
+  const watchIdRef = useRef<number | null>(null);
 
   const handlePositionError = (error: GeolocationPositionError) => {
     console.error("Error getting location:", error);
@@ -49,61 +53,43 @@ const useLocationTracking = (
     });
   };
 
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-
-    if (
-      tracking &&
-      sessionData &&
-      sessionData.creatorId === authContext?.user?.uid
-    ) {
-      const fetchLocation = () => {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            sendLocationUpdate(sessionKey, position);
-          },
-          handlePositionError,
-          geoOptions
-        );
-      };
-
-      intervalId = setInterval(fetchLocation, updateInterval);
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [
-    tracking,
-    sessionData,
-    sessionKey,
-    updateInterval,
-    toast,
-    authContext?.user,
-    setTracking,
-  ]);
+  const throttledSendLocationUpdate = throttle((position: Position) => {
+    console.log("sent location update");
+    sendLocationUpdate(sessionKey, position);
+  }, 3000);
 
   useEffect(() => {
-    const watchId = navigator.geolocation.watchPosition(
+    watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, heading, speed } = position.coords;
+        if (!latitude || !longitude) return;
+
         const newPosition = {
           lat: latitude,
           lng: longitude,
+          timestamp: position.timestamp,
+          heading,
+          speed,
         };
+
         setCurrentPosition(newPosition);
         localStorage.setItem("currentPosition", JSON.stringify(newPosition));
+
+        if (tracking && sessionData?.creatorId === authContext?.user?.uid) {
+          throttledSendLocationUpdate(newPosition);
+        }
       },
       handlePositionError,
       geoOptions
     );
 
     return () => {
-      navigator.geolocation.clearWatch(watchId);
+      if (watchIdRef.current) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      throttledSendLocationUpdate.cancel(); // Cancel any pending throttled calls on unmount
     };
-  }, []);
+  }, [tracking, sessionData?.creatorId, sessionKey, authContext?.user]);
 
   useEffect(() => {
     if (!sessionKey) return;
@@ -116,15 +102,12 @@ const useLocationTracking = (
         snapshot.forEach((doc) => {
           const data = doc.data() as Position;
           const { id, lat, lng, timestamp } = data;
-
-          if (timestamp instanceof Timestamp) {
-            newLocations.push({ id, lat, lng, timestamp });
-          }
+          newLocations.push({ id, lat, lng, timestamp });
         });
 
         newLocations.sort(
           (a, b) =>
-            a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime()
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         );
 
         setLocations(newLocations);

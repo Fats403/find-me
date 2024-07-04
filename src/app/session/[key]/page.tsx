@@ -1,13 +1,6 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useContext,
-  useMemo,
-  SetStateAction,
-  Dispatch,
-} from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,7 +15,6 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerDescription,
-  DrawerFooter,
 } from "@/components/ui/drawer";
 import {
   Wifi,
@@ -31,16 +23,8 @@ import {
   Settings,
   EyeOff,
   Pin,
-  Signpost,
   Milestone,
 } from "lucide-react";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 import { useMediaQuery } from "@/lib/use-media-query";
 import Spinner from "@/components/ui/spinner";
 import MapComponent from "@/components/map";
@@ -57,17 +41,9 @@ import useLocationTracking from "@/hooks/use-location-tracking";
 import { useParams } from "next/navigation";
 import useFetchSessionData from "@/hooks/use-fetch-session";
 import { useSettings } from "@/components/settings-provider";
-import { Checkbox } from "@/components/ui/checkbox";
 import useDirections from "@/hooks/use-directions";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-
-const intervalOptions = {
-  "30000": "Every 30 seconds",
-  "60000": "Every 1 minute",
-  "300000": "Every 5 minutes",
-  "600000": "Every 10 minutes",
-};
 
 export default function SessionPage() {
   const [open, setOpen] = useState(false);
@@ -295,8 +271,15 @@ export default function SessionPage() {
               latitude={sessionData.pin.lat}
               longitude={sessionData.pin.lng}
             >
-              <div className="flex justify-center items-center size-8 rounded-full bg-white border-2 border-black">
-                <Pin className="w-5 h-5 text-red-500" />
+              <div className="relative group cursor-pointer">
+                <div className="hidden group-hover:block absolute bottom-full mb-2 p-2 bg-white border border-gray-300 rounded shadow-lg w-40 -left-16">
+                  <p>Lat: {sessionData.pin.lat}</p>
+                  <p>Lng: {sessionData.pin.lng}</p>
+                </div>
+
+                <div className="flex justify-center items-center size-8 rounded-full bg-white border-2 border-[#7D7F7C]">
+                  <Pin className="w-5 h-5 text-red-500" />
+                </div>
               </div>
             </Marker>
           )}
@@ -332,9 +315,7 @@ function SettingsContent({
   const router = useRouter();
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
-  const { updateInterval, setUpdateInterval, setBoundType, boundType } =
-    useSettings();
-  const defaultValue = updateInterval.toString();
+  const { setBoundType, boundType } = useSettings();
   const [onlineStatus, setOnlineStatus] = useState(navigator.onLine);
 
   useEffect(() => {
@@ -348,10 +329,6 @@ function SettingsContent({
       window.removeEventListener("offline", updateOnlineStatus);
     };
   }, []);
-
-  const handleSelectChange = (value: string) => {
-    setUpdateInterval(Number(value));
-  };
 
   const deleteSessionMutation = useMutation<DeleteSessionResponseData, Error>({
     mutationFn: async () => {
@@ -386,27 +363,6 @@ function SettingsContent({
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      {isSessionOwner && (
-        <div>
-          <p className="mb-2">Send location updates</p>
-          <Select
-            defaultValue={defaultValue}
-            onValueChange={handleSelectChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Frequency" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(intervalOptions).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
       <p>Bind map to</p>
       <RadioGroup
         defaultValue={boundType}

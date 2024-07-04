@@ -13,9 +13,8 @@ import {
   doc,
   setDoc,
   collection,
-  serverTimestamp,
 } from "firebase/firestore";
-import { Location } from "./types";
+import { Position } from "./types";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -46,7 +45,7 @@ export const firestore = initializeFirestore(app, {
 
 export function setPinLocation(
   sessionKey: string | null,
-  pin: Location
+  pin: Position
 ): Promise<void> {
   const docRef = doc(firestore, `sessions/${sessionKey}`);
   return setDoc(docRef, { pin }, { merge: true });
@@ -54,9 +53,8 @@ export function setPinLocation(
 
 export function sendLocationUpdate(
   sessionKey: string | null,
-  position: GeolocationPosition
+  position: Position
 ): Promise<void> {
-  const { latitude, longitude } = position.coords;
   const locationCollectionRef = collection(
     firestore,
     `sessions/${sessionKey}/locations`
@@ -64,8 +62,6 @@ export function sendLocationUpdate(
   const docRef = doc(locationCollectionRef);
   return setDoc(docRef, {
     id: docRef.id,
-    lat: latitude,
-    lng: longitude,
-    timestamp: serverTimestamp(),
+    ...position,
   });
 }

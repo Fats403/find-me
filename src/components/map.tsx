@@ -61,7 +61,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
       if (placingPin) {
         const { lngLat } = event;
 
-        setPinLocation(sessionKey, { lat: lngLat.lat, lng: lngLat.lng });
+        setPinLocation(sessionKey, {
+          lat: Number(lngLat.lat.toFixed(6)),
+          lng: Number(lngLat.lng.toFixed(6)),
+          timestamp: Date.now(),
+        });
         setPlacingPin(false);
       }
     },

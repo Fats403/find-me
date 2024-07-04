@@ -68,6 +68,7 @@ export default function useDirections({
 
   const { mutate, isPending } = directionsMutation;
 
+  // TODO: fix issue where this runs twice initially
   useEffect(() => {
     if (currentPosition && pin) {
       if (

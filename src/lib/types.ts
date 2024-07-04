@@ -1,4 +1,3 @@
-import { Timestamp } from "firebase/firestore";
 export type BoundType = "fitToBounds" | "centerOnUser" | "nothing";
 
 export interface Location {
@@ -7,8 +6,10 @@ export interface Location {
 }
 
 export interface Position extends Location {
-  timestamp: Timestamp;
-  id: string;
+  timestamp: number;
+  heading?: number | null;
+  speed?: number | null;
+  id?: string;
 }
 
 export interface SessionData {

@@ -11,9 +11,7 @@ import React, {
 
 interface SettingsContextProps {
   boundType: BoundType;
-  updateInterval: number;
   tracking: boolean;
-  setUpdateInterval: (value: number) => void;
   setTracking: React.Dispatch<React.SetStateAction<boolean>>;
   setBoundType: (boundType: BoundType) => void;
 }
@@ -38,9 +36,6 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
   const [boundType, setBoundType] = useState<BoundType>(
     getInitialState("boundType", "nothing")
   );
-  const [updateInterval, setUpdateInterval] = useState<number>(
-    getInitialState("updateInterval", 60000)
-  );
   const [tracking, setTracking] = useState<boolean>(
     getInitialState("tracking", false)
   );
@@ -53,12 +48,6 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("updateInterval", updateInterval.toString());
-    }
-  }, [updateInterval]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
       localStorage.setItem("boundType", JSON.stringify(boundType));
     }
   }, [boundType]);
@@ -67,10 +56,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
     <SettingsContext.Provider
       value={{
         boundType,
-        updateInterval,
         tracking,
         setBoundType,
-        setUpdateInterval,
         setTracking,
       }}
     >
