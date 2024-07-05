@@ -44,7 +44,7 @@ const GoogleButton = ({ onSignInSuccess }: GoogleButtonProps): JSX.Element => {
     <Button
       onMouseDown={() => signInWithGoogle()}
       disabled={isSigningIn}
-      className="px-5 py-3 inline-flex items-center rounded-lg text-white dark:text-white border-none outline-none shadow-lg bg-gray-900 hover:bg-gray-800 active:bg-gray-700"
+      className="px-5 py-3 inline-flex items-center rounded-lg text-white dark:text-black border-none outline-none shadow-lg bg-gray-900 hover:bg-gray-800 active:bg-gray-700"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
