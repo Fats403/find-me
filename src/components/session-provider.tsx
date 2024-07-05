@@ -19,6 +19,7 @@ interface SessionContextProps {
   boundType: BoundType;
   tracking: boolean;
   updateDistance: string;
+  showLocations: boolean;
   sessionData: SessionData | null;
   sessionKey: string;
   isLoadingSession: boolean;
@@ -32,6 +33,7 @@ interface SessionContextProps {
   setDirectionsOpen: (open: boolean) => void;
   setPlacingPin: (open: boolean) => void;
   setTracking: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowLocations: (checked: boolean) => void;
   setBoundType: (boundType: BoundType) => void;
   setUpdateDistance: (distance: string) => void;
 }
@@ -62,6 +64,9 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({
   const [tracking, setTracking] = useState<boolean>(
     getInitialState("tracking", false)
   );
+  const [showLocations, setShowLocations] = useState<boolean>(
+    getInitialState("showLocations", false)
+  );
 
   const [locationSettingsOpen, setLocationSettingsOpen] = useState(false);
   const [deleteSessionOpen, setDeleteSessionOpen] = useState(false);
@@ -86,6 +91,12 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("tracking", JSON.stringify(tracking));
+    }
+  }, [tracking]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("showLocations", JSON.stringify(showLocations));
     }
   }, [tracking]);
 
@@ -145,6 +156,8 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({
         placingPin,
         updateDistance,
         boundType,
+        showLocations,
+        setShowLocations,
         tracking,
         sessionData,
         sessionKey,

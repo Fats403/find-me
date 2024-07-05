@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext } from "react";
+import React, { useContext, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,6 +48,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function SessionPage() {
   const { toast } = useToast();
@@ -67,6 +68,7 @@ export default function SessionPage() {
     isSessionOwner,
     placingPin,
     setPlacingPin,
+    showLocations,
   } = useSession();
 
   const { currentPosition, locations } = useLocationTracking(
@@ -286,21 +288,24 @@ export default function SessionPage() {
           latestPassedPointIndex={latestPassedPointIndex}
           currentPosition={currentPosition}
         >
-          {locations.map(
-            ({ lat, lng, timestamp, id, speed, heading }, index) => (
-              <CustomMarker
-                id={id}
-                key={`${index}-${id}`}
-                lat={lat}
-                lng={lng}
-                speed={speed}
-                heading={heading}
-                timestamp={timestamp}
-                isMostRecent={index === locations.length - 1}
-                isSessionOwner={isSessionOwner}
-              />
-            )
-          )}
+          {(showLocations
+            ? locations
+            : locations.length > 0
+            ? [locations[locations.length - 1]]
+            : []
+          ).map(({ lat, lng, timestamp, id, speed, heading }, index) => (
+            <CustomMarker
+              id={id}
+              key={`${index}-${id}`}
+              lat={lat}
+              lng={lng}
+              speed={speed}
+              heading={heading}
+              timestamp={timestamp}
+              isMostRecent={index === locations.length - 1}
+              isSessionOwner={isSessionOwner}
+            />
+          ))}
 
           {sessionData?.pin && (
             <CustomMarker
@@ -339,15 +344,17 @@ function SettingsContent() {
     setUpdateDistance,
     setDeleteSessionOpen,
     setLocationSettingsOpen,
+    showLocations,
+    setShowLocations,
   } = useSession();
 
   return (
     <div className="flex flex-col gap-4 p-4">
       {isSessionOwner && (
-        <>
+        <div>
           <Label htmlFor="update-distance-select">Update position every</Label>
           <Select value={updateDistance} onValueChange={setUpdateDistance}>
-            <SelectTrigger id="update-distance-select" className="w-full">
+            <SelectTrigger id="update-distance-select" className="w-full mt-2">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -359,24 +366,40 @@ function SettingsContent() {
               </SelectGroup>
             </SelectContent>
           </Select>
-        </>
+        </div>
       )}
 
-      <Label htmlFor="update-distance-select">Bind map to</Label>
-      <Select value={boundType} onValueChange={setBoundType}>
-        <SelectTrigger id="update-distance-select" className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectItem value="nothing">Nothing</SelectItem>
-            <SelectItem value="centerOnUser">My position</SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+      <div>
+        <Label htmlFor="update-distance-select">Bind map to</Label>
+        <Select value={boundType} onValueChange={setBoundType}>
+          <SelectTrigger id="update-distance-select" className="w-full mt-2">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="nothing">Nothing</SelectItem>
+              <SelectItem value="centerOnUser">My position</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center space-x-2 mt-2">
+        <Checkbox
+          id="show-location-updates-checkbox"
+          checked={showLocations}
+          onCheckedChange={setShowLocations}
+        />
+        <Label
+          htmlFor="show-location-updates-checkbox"
+          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+        >
+          Show all session leader locations
+        </Label>
+      </div>
 
       {isSessionOwner && (
-        <Button onClick={() => setPlacingPin(!placingPin)} className="mt-2">
+        <Button onClick={() => setPlacingPin(!placingPin)} className="mt-8">
           {placingPin ? "Cancel Pin Placement" : "Place a Pin on the Map"}
         </Button>
       )}

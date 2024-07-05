@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import Map, {
   ViewStateChangeEvent,
   MapLayerMouseEvent,
   Source,
   Layer,
+  MapRef,
 } from "react-map-gl";
 import { useSession } from "./session-provider";
 import { setPinLocation } from "@/lib/firebase";
@@ -44,6 +45,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   latestPassedPointIndex = null,
   currentPosition,
 }) => {
+  const mapRef = useRef<MapRef | null>(null);
   const { boundType } = useSession();
   const [viewport, setViewport] = useState({
     latitude: center.lat,
@@ -74,13 +76,14 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
   useEffect(() => {
     if (boundType === "centerOnUser" && currentPosition) {
-      setViewport((prev) => ({
-        ...prev,
-        latitude: currentPosition.lat,
-        longitude: currentPosition.lng,
+      mapRef.current?.easeTo({
         zoom: 15,
-        bearing: currentPosition?.heading || prev.bearing,
-      }));
+        center: [currentPosition.lng, currentPosition.lat],
+        ...(currentPosition.heading
+          ? { bearing: currentPosition.heading }
+          : {}),
+        duration: 1000,
+      });
     }
   }, [children, boundType, currentPosition]);
 
@@ -93,6 +96,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     <div style={containerStyle}>
       <Map
         {...viewport}
+        ref={mapRef}
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
         onMove={handleMove}
         onClick={handleMapClick}
