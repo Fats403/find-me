@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import ReactQueryProvider from "@/components/query-provider";
 import AuthProvider from "@/components/firebase-provider";
-import { SettingsProvider } from "@/components/settings-provider";
+import { SessionProvider } from "@/components/session-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -47,7 +47,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <ReactQueryProvider>
-            <SettingsProvider>
+            <SessionProvider>
               <ThemeProvider
                 attribute="class"
                 defaultTheme="system"
@@ -59,7 +59,7 @@ export default function RootLayout({
                   <Toaster />
                 </TooltipProvider>
               </ThemeProvider>
-            </SettingsProvider>
+            </SessionProvider>
           </ReactQueryProvider>
         </AuthProvider>
       </body>

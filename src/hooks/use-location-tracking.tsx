@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useContext, useRef } from "react";
-import { collection, onSnapshot, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { firestore, sendLocationUpdate } from "@/lib/firebase";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthContext } from "@/components/firebase-provider";
-import { Location, Position, SessionData } from "@/lib/types";
-import { useSettings } from "@/components/settings-provider";
+import { Position, SessionData } from "@/lib/types";
+import { useSession } from "@/components/session-provider";
 import { calculateDistance } from "@/lib/utils";
 
 const geoOptions = { enableHighAccuracy: true };
@@ -15,7 +15,7 @@ const useLocationTracking = (
   sessionKey: string | null,
   sessionData: SessionData | null
 ) => {
-  const [currentPosition, setCurrentPosition] = useState<Location | null>(
+  const [currentPosition, setCurrentPosition] = useState<Position | null>(
     () => {
       if (typeof window !== "undefined") {
         const savedPosition = localStorage.getItem("currentPosition");
@@ -27,7 +27,7 @@ const useLocationTracking = (
   const [locations, setLocations] = useState<Position[]>([]);
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
-  const { tracking, setTracking, updateDistance } = useSettings();
+  const { tracking, setTracking, updateDistance } = useSession();
 
   const watchIdRef = useRef<number | null>(null);
   const lastSentPositionRef = useRef<Position | null>(null);

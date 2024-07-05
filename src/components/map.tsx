@@ -5,10 +5,9 @@ import Map, {
   Source,
   Layer,
 } from "react-map-gl";
-import { LngLatBounds } from "mapbox-gl";
-import { useSettings } from "./settings-provider";
+import { useSession } from "./session-provider";
 import { setPinLocation } from "@/lib/firebase";
-import { Location } from "@/lib/types";
+import { Position } from "@/lib/types";
 
 interface MapComponentProps {
   containerStyle?: React.CSSProperties;
@@ -18,9 +17,9 @@ interface MapComponentProps {
   placingPin: boolean;
   setPlacingPin: (placing: boolean) => void;
   sessionKey: string | null;
-  tripPath?: [number, number][]; // Add tripPath as a prop
-  latestPassedPointIndex?: number | null; // Add latestPassedPointIndex as a prop
-  currentPosition?: Location | null; // Add currentPosition as a prop
+  tripPath?: [number, number][];
+  latestPassedPointIndex?: number | null;
+  currentPosition?: Position | null;
 }
 
 const defaultContainerStyle: React.CSSProperties = {
@@ -45,11 +44,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
   latestPassedPointIndex = null,
   currentPosition,
 }) => {
-  const { boundType } = useSettings();
+  const { boundType } = useSession();
   const [viewport, setViewport] = useState({
     latitude: center.lat,
     longitude: center.lng,
     zoom: zoom,
+    bearing: 0,
   });
 
   const handleMove = useCallback((event: ViewStateChangeEvent) => {
@@ -73,33 +73,14 @@ const MapComponent: React.FC<MapComponentProps> = ({
   );
 
   useEffect(() => {
-    if (boundType === "fitToBounds") {
-      const bounds = new LngLatBounds();
-      React.Children.forEach(children, (child) => {
-        if (React.isValidElement(child)) {
-          const { latitude, longitude, lat, lng } = child.props;
-          if (latitude && longitude) {
-            bounds.extend([longitude, latitude]);
-          } else if (lat && lng) {
-            bounds.extend([lng, lat]);
-          }
-        }
-      });
-
-      if (!bounds.isEmpty()) {
-        const { _ne, _sw } = bounds;
-        setViewport({
-          latitude: (_ne.lat + _sw.lat) / 2,
-          longitude: (_ne.lng + _sw.lng) / 2,
-          zoom: 8,
-        });
-      }
-    } else if (boundType === "centerOnUser" && currentPosition) {
-      setViewport({
+    if (boundType === "centerOnUser" && currentPosition) {
+      setViewport((prev) => ({
+        ...prev,
         latitude: currentPosition.lat,
         longitude: currentPosition.lng,
         zoom: 15,
-      });
+        bearing: currentPosition?.heading || prev.bearing,
+      }));
     }
   }, [children, boundType, currentPosition]);
 

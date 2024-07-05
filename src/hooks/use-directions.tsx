@@ -1,4 +1,4 @@
-import { useSettings } from "@/components/settings-provider";
+import { useSession } from "@/components/session-provider";
 import { useToast } from "@/components/ui/use-toast";
 import { auth } from "@/lib/firebase";
 import { GetDirectionsResponseData, Location } from "@/lib/types";
@@ -15,7 +15,7 @@ export default function useDirections({
   pin: Location | undefined;
 }) {
   const { toast } = useToast();
-  const { updateDistance } = useSettings();
+  const { updateDistance } = useSession();
   const [previousPin, setPreviousPin] = useState<Location | undefined>(() => {
     if (typeof window !== "undefined") {
       const savedPreviousPin = localStorage.getItem("previousPin");
@@ -147,7 +147,7 @@ export default function useDirections({
     closestIndex = binarySearchClosestSegment(0, tripPath.length - 1);
 
     // Fine-tune the search within a threshold distance around the closest index
-    const thresholdDistance = Number(updateDistance) * 3; // Define a reasonable threshold based on updateDistance
+    const thresholdDistance = Number(updateDistance) * 15; // Define a reasonable threshold based on updateDistance
     let lowerBound = closestIndex;
     let upperBound = closestIndex;
 
@@ -187,6 +187,8 @@ export default function useDirections({
 
     return closestIndex;
   };
+
+  console.log(latestPassedPointIndex);
 
   return { directions, isLoading: isPending, latestPassedPointIndex };
 }

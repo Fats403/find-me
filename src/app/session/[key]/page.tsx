@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useContext, useMemo, useEffect } from "react";
+import React, { useContext } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Drawer,
@@ -16,15 +17,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import {
-  Wifi,
-  Eye,
-  Link,
-  Settings,
-  EyeOff,
-  Pin,
-  Milestone,
-} from "lucide-react";
+import { Eye, Link, Settings, EyeOff, Milestone } from "lucide-react";
 import { useMediaQuery } from "@/lib/use-media-query";
 import Spinner from "@/components/ui/spinner";
 import MapComponent from "@/components/map";
@@ -38,9 +31,7 @@ import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import useLocationTracking from "@/hooks/use-location-tracking";
-import { useParams } from "next/navigation";
-import useFetchSessionData from "@/hooks/use-fetch-session";
-import { useSettings } from "@/components/settings-provider";
+import { useSession } from "@/components/session-provider";
 import useDirections from "@/hooks/use-directions";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -59,30 +50,29 @@ import {
 } from "@/components/ui/tooltip";
 
 export default function SessionPage() {
-  const [open, setOpen] = useState(false);
-  const [directionsOpen, setDirectionsOpen] = useState(false);
-  const [placingPin, setPlacingPin] = useState(false);
-
-  const { key } = useParams();
   const { toast } = useToast();
-
-  const sessionKey = useMemo(
-    () => (typeof key === "string" || key === undefined ? key : key?.[0]),
-    [key]
-  );
-
   const authContext = useContext(AuthContext);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
-  const { tracking, setTracking } = useSettings();
-  const { sessionData, loading } = useFetchSessionData(sessionKey);
+  const {
+    tracking,
+    setTracking,
+    sessionData,
+    sessionKey,
+    setLocationSettingsOpen,
+    locationSettingsOpen,
+    isLoadingSession,
+    setDirectionsOpen,
+    directionsOpen,
+    isSessionOwner,
+    placingPin,
+    setPlacingPin,
+  } = useSession();
 
   const { currentPosition, locations } = useLocationTracking(
     sessionKey,
     sessionData
   );
-
-  const isDesktop = useMediaQuery("(min-width: 768px)");
-  const isSessionOwner = authContext?.user?.uid === sessionData?.creatorId;
 
   const {
     directions,
@@ -92,14 +82,6 @@ export default function SessionPage() {
     currentPosition,
     pin: sessionData?.pin,
   });
-
-  const toggleTracking = () => {
-    setTracking((prev) => !prev);
-  };
-
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
-  };
 
   const handleCopyLink = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -111,7 +93,7 @@ export default function SessionPage() {
     }
   };
 
-  if (loading || authContext?.loading) {
+  if (isLoadingSession || authContext?.loading) {
     return (
       <div className="min-h-screen flex justify-center items-center flex-col">
         <h2>Loading Session...</h2>
@@ -190,7 +172,7 @@ export default function SessionPage() {
         <TooltipTrigger asChild>
           <Button
             onMouseDown={() => {
-              setOpen(true);
+              setLocationSettingsOpen(true);
             }}
             variant="ghost"
             size="icon"
@@ -207,7 +189,7 @@ export default function SessionPage() {
 
       {isSessionOwner && (
         <Button
-          onClick={toggleTracking}
+          onClick={() => setTracking((prev) => !prev)}
           className="absolute z-50 left-4 top-4 bg-white text-black dark:bg-black dark:text-white border-black border-2 hover:bg-gray-200 dark:hover:bg-gray-800"
         >
           {!tracking ? (
@@ -220,7 +202,10 @@ export default function SessionPage() {
       )}
 
       {isDesktop ? (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
+        <Dialog
+          open={locationSettingsOpen}
+          onOpenChange={setLocationSettingsOpen}
+        >
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Location Settings</DialogTitle>
@@ -228,15 +213,14 @@ export default function SessionPage() {
                 Configure your location update settings.
               </DialogDescription>
             </DialogHeader>
-            <SettingsContent
-              isSessionOwner={isSessionOwner}
-              placingPin={placingPin}
-              setPlacingPin={setPlacingPin}
-            />
+            <SettingsContent />
           </DialogContent>
         </Dialog>
       ) : (
-        <Drawer open={open} onOpenChange={handleOpenChange}>
+        <Drawer
+          open={locationSettingsOpen}
+          onOpenChange={setLocationSettingsOpen}
+        >
           <DrawerContent>
             <DrawerHeader className="text-left">
               <DrawerTitle>Location Settings</DrawerTitle>
@@ -244,14 +228,12 @@ export default function SessionPage() {
                 Configure your location update settings.
               </DrawerDescription>
             </DrawerHeader>
-            <SettingsContent
-              isSessionOwner={isSessionOwner}
-              placingPin={placingPin}
-              setPlacingPin={setPlacingPin}
-            />
+            <SettingsContent />
           </DrawerContent>
         </Drawer>
       )}
+
+      <DeleteSessionDialog />
 
       <Drawer open={directionsOpen} onOpenChange={setDirectionsOpen}>
         <DrawerContent>
@@ -345,22 +327,81 @@ export default function SessionPage() {
   );
 }
 
-interface SettingsContentProps {
-  placingPin: boolean;
-  setPlacingPin: (placing: boolean) => void;
-  isSessionOwner: boolean;
+function SettingsContent() {
+  const {
+    placingPin,
+    setPlacingPin,
+    isSessionOwner,
+    setBoundType,
+    boundType,
+    updateDistance,
+    setUpdateDistance,
+    setDeleteSessionOpen,
+    setLocationSettingsOpen,
+  } = useSession();
+
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      {isSessionOwner && (
+        <>
+          <Label htmlFor="update-distance-select">Update position every</Label>
+          <Select value={updateDistance} onValueChange={setUpdateDistance}>
+            <SelectTrigger id="update-distance-select" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="100">100 meters</SelectItem>
+                <SelectItem value="250">250 meters</SelectItem>
+                <SelectItem value="500">500 meters</SelectItem>
+                <SelectItem value="1000">1 kilometer</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </>
+      )}
+
+      <Label htmlFor="update-distance-select">Bind map to</Label>
+      <Select value={boundType} onValueChange={setBoundType}>
+        <SelectTrigger id="update-distance-select" className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="nothing">Nothing</SelectItem>
+            <SelectItem value="centerOnUser">My position</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+
+      {isSessionOwner && (
+        <Button onClick={() => setPlacingPin(!placingPin)} className="mt-2">
+          {placingPin ? "Cancel Pin Placement" : "Place a Pin on the Map"}
+        </Button>
+      )}
+
+      {isSessionOwner && (
+        <Button
+          variant="destructive"
+          onClick={() => {
+            setLocationSettingsOpen(false);
+            setDeleteSessionOpen(true);
+          }}
+          className="mt-2"
+        >
+          Delete Session
+        </Button>
+      )}
+    </div>
+  );
 }
 
-function SettingsContent({
-  placingPin,
-  setPlacingPin,
-  isSessionOwner,
-}: SettingsContentProps) {
+function DeleteSessionDialog() {
   const router = useRouter();
   const { toast } = useToast();
   const authContext = useContext(AuthContext);
-  const { setBoundType, boundType, updateDistance, setUpdateDistance } =
-    useSettings();
+
+  const { setDeleteSessionOpen, deleteSessionOpen } = useSession();
 
   const deleteSessionMutation = useMutation<DeleteSessionResponseData, Error>({
     mutationFn: async () => {
@@ -378,9 +419,11 @@ function SettingsContent({
         localStorage.removeItem("tracking");
       }
 
+      setDeleteSessionOpen(false);
+      toast({ title: "Session deleted!" });
+
       authContext?.setUserData(data.user);
       router.push("/");
-      toast({ title: "Session deleted!" });
     },
     onError: (error: any) => {
       const errorMessage =
@@ -394,60 +437,33 @@ function SettingsContent({
   });
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      {isSessionOwner && (
-        <>
-          <Label htmlFor="update-distance-select">Update position every</Label>
-          <Select value={updateDistance} onValueChange={setUpdateDistance}>
-            <SelectTrigger id="update-distance-select" className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="100">100 meters</SelectItem>
-                <SelectItem value="250">250 meters</SelectItem>
-                <SelectItem value="500">500 meters</SelectItem>
-                <SelectItem value="1000">1 kilometer</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </>
-      )}
-
-      <Label htmlFor="update-distance-select">Bind map to</Label>
-      <Select value={boundType} onValueChange={setBoundType}>
-        <SelectTrigger id="update-distance-select" className="w-[180px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectItem value="nothing">Nothing</SelectItem>
-            <SelectItem value="centerOnUser">My position</SelectItem>
-            <SelectItem value="fitToBounds">All positions</SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-
-      {isSessionOwner && (
-        <Button
-          onClick={() => setPlacingPin(!placingPin)}
-          variant="outline"
-          className="mt-2"
-        >
-          {placingPin ? "Cancel Pin Placement" : "Place a Pin on the Map"}
-        </Button>
-      )}
-
-      {isSessionOwner && (
-        <Button
-          variant="destructive"
-          onClick={() => deleteSessionMutation.mutate()}
-          disabled={deleteSessionMutation.isPending}
-          className="mt-2"
-        >
-          {deleteSessionMutation.isPending ? <Spinner /> : "Delete Session"}
-        </Button>
-      )}
-    </div>
+    <Dialog open={deleteSessionOpen} onOpenChange={setDeleteSessionOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Delete your session?</DialogTitle>
+          <DialogDescription>
+            All viewers will be kicked from the session and your session data
+            will be deleted permanently.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <div className="mt-2 flex justify-center items-center">
+            <Button
+              className="mr-2"
+              onClick={() => setDeleteSessionOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteSessionMutation.mutate()}
+              disabled={deleteSessionMutation.isPending}
+            >
+              {deleteSessionMutation.isPending ? <Spinner /> : "Yes, I'm Sure"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
