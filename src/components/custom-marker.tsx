@@ -5,6 +5,7 @@ import { Position } from "@/lib/types";
 import Image from "next/image";
 
 interface CustomMarkerPosition extends Position {
+  isSessionOwner?: boolean;
   isMostRecent?: boolean;
   isPin?: boolean;
 }
@@ -16,6 +17,7 @@ const CustomMarker: React.FC<CustomMarkerPosition> = ({
   speed,
   heading,
   isMostRecent,
+  isSessionOwner,
   isPin,
 }) => {
   return (
@@ -27,7 +29,7 @@ const CustomMarker: React.FC<CustomMarkerPosition> = ({
           {speed && <p>Speed: {formatSpeed(speed)} km/h</p>}
           {new Date(timestamp).toLocaleString()}
         </div>
-        {isMostRecent ? (
+        {isMostRecent && !isSessionOwner ? (
           <div className="flex justify-center items-center size-8 rounded-full bg-white border-2 border-[#7D7F7C]">
             <User className="w-5 h-5 text-red-500" />
           </div>

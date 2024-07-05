@@ -188,7 +188,5 @@ export default function useDirections({
     return closestIndex;
   };
 
-  console.log(latestPassedPointIndex);
-
   return { directions, isLoading: isPending, latestPassedPointIndex };
 }

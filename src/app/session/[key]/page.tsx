@@ -297,6 +297,7 @@ export default function SessionPage() {
                 heading={heading}
                 timestamp={timestamp}
                 isMostRecent={index === locations.length - 1}
+                isSessionOwner={isSessionOwner}
               />
             )
           )}
